@@ -1,12 +1,12 @@
 #! /usr/bin/env python3
 
-"""Generate [language_name]ellis.csv file (similar to ellis.csv) for a specific language,
- by removing phonetic symbols not in the language from ellis.py/ellis.csv"""
+"""Generate [language_name]riggle.csv file (similar to riggle.csv) for a specific language,
+ by removing phonetic symbols not in the language from riggle.py/riggle.csv"""
 
-# usage example: python3 language_to_ellis.py ../datasets/AmharicAPA.csv
+# usage example: python3 language_to_riggle.py ../datasets/AmharicAPA.csv
 # [Language]APA.csv files can be found in the Dataset Files folder in the Team Drive
 
-import ellis, argparse, csv
+import riggle, argparse, csv
 
 def main():
     parser = argparse.ArgumentParser()
@@ -24,7 +24,7 @@ def main():
                 "low"]
 
     print(','.join(features))
-    for sym in ellis.symbols:
+    for sym in riggle.symbols:
         if sym['symbol'] in symbols:
             print(','.join(sym[f] for f in features))
 

@@ -1,14 +1,16 @@
 import csv, sys, itertools
 
-with open('/home/shraddha/Desktop/Phonosynth/datasets/riggle.csv', 'r') as infile:
-  reader = csv.DictReader(infile)
-  data = {}
-  for row in reader:
-    for header, value in row.items():
-      try:
-        data[header].append(value)
-      except KeyError:
-        data[header] = [value]
+def read_phones():
+	with open('/home/shraddha/Desktop/Phonosynth/datasets/riggle.csv', 'r') as infile:
+		reader = csv.DictReader(infile)
+		data = {}
+		for row in reader:
+			for header, value in row.items():
+				try:
+					data[header].append(value)
+				except KeyError:
+					data[header] = [value]
+	return data
 
 with open("/home/shraddha/Desktop/Phonosynth/datasets/riggle.csv", "r") as f:
     reader = csv.reader(f)
@@ -19,6 +21,7 @@ def all_same(items):
 
 def implied(feature_1, feature_2):
 	imply = []
+	data = read_phones()
 	f1 = data[feature_1]
 	f2 = data[feature_2]
 	pindices = [i for i, x in enumerate(f1) if x == "+"]
@@ -31,9 +34,6 @@ def implied(feature_1, feature_2):
 		imply.append(("-"+feature_1,nvalues[0]+feature_2))
 	return imply
 
-result = [implied(p1, p2) for p1 in cols for p2 in cols if (p1 != p2 and p1 != 'symbol' and p2 != 'symbol')]
-inferred = [x for x in result if x != []]
-for i in inferred:
-	print(i,end="\n")
+inferred = [implied(p1, p2) for p1 in cols for p2 in cols if (p1 != p2 and p1 != 'symbol' and p2 != 'symbol')]
 
-
+result = [x for x in inferred if x != []]

@@ -19,7 +19,7 @@ def main():
             phone, meaning = line
             symbols.update(phone)
 
-    features = ["voice", "front", "nas", "back", "round", "cons", "cont", "coronal", "ATR", "dist", "symbol",
+    features = ["symbol","voice", "front", "nas", "back", "round", "cons", "cont", "coronal", "ATR", "dist",
                 "del. rel.", "c.g.", "approx", "labial", "high", "strid", "ant", "dorsal", "s.g.", "son", "lat", "syll",
                 "low"]
 

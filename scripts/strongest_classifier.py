@@ -23,4 +23,5 @@ if __name__ == "__main__":
   phones = read_phones(filename)
   selected_phones = filter(lambda phone: phone["symbol"] in sys.argv[2:], phones)
   classifier = reduce(intersect, selected_phones)
+  print(classifier)
   print_phone(classifier)

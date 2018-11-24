@@ -1,0 +1,10 @@
+One ruled problems in increasing order of difficulty.
+
+Russian (RussianAPA.csv)
+Korean (csv file not present) - Ignore the vowel variations
+Kuria2 (KikuraiAPA.csv)
+Mixtec (No csv file)
+Xavante (No csv file)
+Greek (GreekAPA.csv)
+Gen (GenAPA.csv)
+Amharic (AmharicAPA.csv)

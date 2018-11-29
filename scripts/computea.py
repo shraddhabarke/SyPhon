@@ -1,5 +1,6 @@
 import csv, sys, subprocess, json
-from implied import all_same, read_phones, inferred
+from strongest_classifier import context, classifier, read_phone, remove_indices, add_indices
+from implied import all_same, inferred
 
 def convertdict(dictname):
 	clist = []
@@ -8,8 +9,14 @@ def convertdict(dictname):
 			clist.append(value+key)
 	return clist
 
-def mod_implied(feature_1, feature_2,output):
-	data = read_phones()
+def convertlist(flist):
+	cdict = {}
+	for elem in flist:
+		cdict.update({elem[1:]:elem[0]})
+	return cdict
+
+def mod_implied(filename, feature_1, feature_2, output):
+	data = read_phone(filename)
 	imply = []
 	f1 = data[feature_1]
 	f2 = data[feature_2]
@@ -19,14 +26,40 @@ def mod_implied(feature_1, feature_2,output):
 		imply.append((output[feature_1]+feature_1,output[feature_2]+feature_2))
 	return imply
 
+def check_noisy(dictname,filename,context):
+	llist = []
+	contextlist = []
+	data = read_phone(filename)
+	valuelist = list(dictname.values())
+
+	target_indices = ([i for i, x in enumerate(data["target"]) if x == "1"])
+	for feature, value in dictname.items():
+		llist.append(remove_indices(target_indices, data[feature]))
+	nllist = [list(zip(*llist))[i] for i in range(len(llist[0]))]
+	sindices = [i for i, x in enumerate(nllist) if x == tuple(valuelist)]
+	print("The following sounds might be noisy!")
+	for elem in sindices:
+		print(data["symbol"][elem])
+	contextvalues = list(context.values())
+	for feature,value in context.items():
+		contextlist.append(add_indices(sindices, data[feature]))
+	ncontextlist = [list(zip(*contextlist))[i] for i in range(len(contextlist[0]))]
+	cindices = [i for i, x in enumerate(ncontextlist) if x == tuple(contextvalues)]
+	if(len(cindices)) == 0:
+		print("No noise!")
+	else:
+		for elem in cindices:
+			print(data["symbol"][elem], "is noisy!")
+
 if __name__ == "__main__":
-  dictname = json.loads(sys.argv[1])
-  dictlist = list(dictname.keys())
-  inferred = [mod_implied(p1, p2,dictname) for p1 in dictlist for p2 in dictlist if (p1 != p2 and p1 != 'symbol' and p2 != 'symbol')]
-  elems = [x[0][1] for x in inferred if x != []]
-  computea = [x for x in convertdict(dictname) if x not in elems]
-  print(computea)
-
-
-
-
+	fname = sys.argv[1]
+	contextfname = sys.argv[2]
+	context = context(contextfname)
+	dictname = classifier(fname)
+	keylist = list(dictname.keys())
+	inferred = [mod_implied(fname, p1, p2, dictname) for p1 in keylist for p2 in keylist if (p1 != p2 and p1 != 'symbol' and p2 != 'symbol')]
+	elems = [x[0][1] for x in inferred if x != []]
+	computea = [x for x in convertdict(dictname) if x not in elems]
+	check_noisy(convertlist(computea),fname,context)
+	print(computea)
+	print(context)

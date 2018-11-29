@@ -12,11 +12,7 @@ def read_words(filename):
 def read_phones(filename):
   with open(filename, "r") as f:
     reader = csv.DictReader(f)
-    phones = []
-    for row in reader:
-      row.pop("target")
-      phones.append(row)
-    return phones
+    return list(reader)
 
 def to_triples(l):
   left, middle = itertools.tee(l)
@@ -27,8 +23,8 @@ def to_triples(l):
 
 def word_to_phones(word, phones_by_symbol):
   return {
-    "word": [phones_by_symbol[symbol] for symbol in word["word"]],
-    "realization": [phones_by_symbol[symbol] for symbol in word["realization"]]
+    "word": [phones_by_symbol[ipaize(symbol)] for symbol in word["word"]],
+    "realization": [phones_by_symbol[ipaize(symbol)] for symbol in word["realization"]]
   }
 
 def triples_changed(word):
@@ -47,6 +43,10 @@ def strongest_triple_classifier(triples):
 
 def remove_zeros(phone):
   return {feature: value for feature, value in phone.items() if value != "0"}
+
+def ipaize(symbol):
+  to_unicode = {"g" : "ɡ"}
+  return to_unicode.get(symbol, symbol)
 
 if __name__ == "__main__":
   phones = read_phones(sys.argv[1])

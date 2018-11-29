@@ -31,7 +31,6 @@ def check_noisy(dictname,filename,context):
 	contextlist = []
 	data = read_phone(filename)
 	valuelist = list(dictname.values())
-
 	target_indices = ([i for i, x in enumerate(data["target"]) if x == "1"])
 	for feature, value in dictname.items():
 		llist.append(remove_indices(target_indices, data[feature]))
@@ -60,6 +59,6 @@ if __name__ == "__main__":
 	inferred = [mod_implied(fname, p1, p2, dictname) for p1 in keylist for p2 in keylist if (p1 != p2 and p1 != 'symbol' and p2 != 'symbol')]
 	elems = [x[0][1] for x in inferred if x != []]
 	computea = [x for x in convertdict(dictname) if x not in elems]
+	print(context)
 	check_noisy(convertlist(computea),fname,context)
 	print(computea)
-	print(context)

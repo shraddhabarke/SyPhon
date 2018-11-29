@@ -34,12 +34,12 @@ def print_phone(phone):
 
 def remove_indices(index_list,target_list):
   for index in sorted(index_list, reverse=True):
-    del target_list[index]
+    target_list.pop(index)
   return target_list
 
 def add_indices(index_list,target_list):
   ntarget = []
-  for index in sorted(index_list):
+  for index in sorted(index_list, reverse=True):
     ntarget.append(target_list[index])
   return ntarget
 
@@ -49,8 +49,9 @@ def check_neg(filename,dictionary):
   target_indices = ([i for i, x in enumerate(data["target"]) if x == "1"])
   for key,value in dictionary.items():
     if any(value == x for x in remove_indices(target_indices, data[key])):
-      del ndict[key]
-    return ndict
+      ndict.pop(key,None)
+  return ndict
+
 
 def context(filename):
   phones = read_phones(filename)

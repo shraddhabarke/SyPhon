@@ -1,4 +1,4 @@
-symbol,Lfront,Lnas,Lback,Lround,Lcons,Lcont,Lcoronal,LATR,Ldist,Lvoice,Ldel. rel.,Lc.g.,Lapprox,Llabial,Lhigh,Lstrid,Lant,Ldorsal,Ls.g.,Lson,Llat,Lsyll,Llow,Rvoice,Rfront,Rnasal,Rback,Rround,Rcons,Rcont,Rcoronal,RATR,Rdist,R del.rel,R.c.g,Rapprox,Rlabial,Rhigh,Rstrid,Rant,Rdorsal,Rs.g,Rson,Rlat,Rsyll,Rlow,target
+symbol,Lfront,Lnas,Lback,Lround,Lcons,Lcont,Lcoronal,LATR,Ldist,Lvoice,Ldel. rel.,Lc.g.,Lapprox,Llabial,Lhigh,Lstrid,Lant,Ldorsal,Ls.g.,Lson,Llat,Lsyll,Llow,Rvoice,Rfront,Rnas,Rback,Rround,Rcons,Rcont,Rcoronal,RATR,Rdist,Rdel.rel.,Rc.g.,Rapprox,Rlabial,Rhigh,Rstrid,Rant,Rdorsal,Rs.g.,Rson,Rlat,Rsyll,Rlow,target
 a_a,+,-,-,-,-,+,-,-,0,+,0,-,+,-,-,0,0,+,-,+,-,+,+,+,+,-,-,-,-,+,-,-,0,0,-,+,-,-,0,0,+,-,+,-,+,+,0
 i_a,+,-,-,-,-,+,-,+,0,+,0,-,+,-,+,0,0,+,-,+,-,+,-,+,+,-,-,-,-,+,-,-,0,0,-,+,-,-,0,0,+,-,+,-,+,+,0
 o_a,-,-,+,+,-,+,-,+,0,+,0,-,+,+,-,0,0,+,-,+,-,+,-,+,+,-,-,-,-,+,-,-,0,0,-,+,-,-,0,0,+,-,+,-,+,+,0

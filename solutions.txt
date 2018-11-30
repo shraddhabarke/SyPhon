@@ -21,3 +21,32 @@ The underlying roots are /ip, kup, kaph
 
 consonants neutralize to plain unaspirated before another consonant.
 [-son] → [-s.g., -c.g] / ___ C
+
+4. Xavante
+The 2nd person prefix is /ʔaj/, and /j/ assimilates completely to a following coronal
+consonant.
+[-cons,-back] → [+cor,αant,βvoice,γcont] / __[+cor,αant,βvoice,γcont]
+
+5. Hungarian
+
+The underlying forms are identical to the bare noun form, and the suffixes are /-ban/,
+/-to:l/, /-nak/ (or harmonic variants). There is regressive voicing wherereby obstruents
+agree in voicing with an immediately following obstruent (but not a sonorant).
+[-son] → [αvoice] / ___ [-son,αvoice]
+
+6. North Saami
+
+The underlying form of the noun is identical to the essive form minus the affix /-in/.
+Word-finally, there is massive neutralization of the consonant, and the challenge here is
+
+extracting generalizations about these processes. All final consonants are coronal, non-
+affricate, and voiceless unless sonorant. This can be expressed as one rule.
+
+C → [+cor,-voice,-del.rel] / ___ #
+The concept of structure preservation and “closest segment” is helpful here, explaining
+why /dʒ
+/ becomes [ʃ] and not [t] or [s].
+Two puzzles will be the fact that /h/ becomes [t] and not [s], and /ð/ becomes [t].
+In terms of features, these are stridency-preserving results, where the resulting coronal is
+non-strident. (As it happens, another way to handle the problem of /ð/ is to assume that it
+is actually /d/, since /d/ does lenite to [ð] intervocalically).

@@ -6,7 +6,18 @@ characterization of w as the [+labial] glide corresponding to /p/ and j as the [
 corresponding to /k/.
 
 2. Kikuria
+
 There is a vowel harmony rule where a high vowel becomes a mid vowel before a
 mid vowel (disregarding consonants), so that /huut-er-a/ becomes [hootera].
 
 [+syl] → [-hi] / __ C0 [+syl,-hi]
+
+3. Korean
+
+The underlying roots are /ip, kup, kaph
+, ciph
+, tat, puth
+, mək, čuk, ik, tak’, k’ak’, sək’/. All
+
+consonants neutralize to plain unaspirated before another consonant.
+[-son] → [-s.g., -c.g] / ___ C

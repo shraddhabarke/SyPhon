@@ -23,15 +23,6 @@ def read_phones(filename):
 def intersect(phone_1, phone_2):
   return dict(phone_1.items() & phone_2.items())
 
-def print_phone(phone):
-  for (feature, value) in phone.items():
-    if value == "+":
-      print(feature)
-    elif value == "-":
-      print("not " + feature)
-    elif value == "#":
-      print("#" + feature)
-
 def remove_indices(index_list,target_list):
   for index in sorted(index_list, reverse=True):
     target_list.pop(index)
@@ -52,7 +43,6 @@ def check_neg(filename,dictionary):
       ndict.pop(key,None)
   return ndict
 
-
 def context(filename):
   phones = read_phones(filename)
   selected_phones = filter(lambda phone: phone["target"] == "1", phones)
@@ -61,7 +51,6 @@ def context(filename):
   return new_classifier
 
 def classifier(filename):
-  filename = sys.argv[1]
   phones = read_phones(filename)
   selected_phones = filter(lambda phone: phone["target"] == "1", phones)
   classifier = reduce(intersect, selected_phones)

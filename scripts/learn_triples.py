@@ -12,7 +12,11 @@ def read_words(filename):
 def read_phones(filename):
   with open(filename, "r") as f:
     reader = csv.DictReader(f)
-    return list(reader)
+    phones = []
+    for phone in reader:
+      phone["word boundary"] = "-"
+      phones.append(phone)
+    return phones
 
 def to_triples(l):
   left, middle = itertools.tee(l)
@@ -25,7 +29,7 @@ def word_to_phones(word, phones_by_symbol):
   return ([phones_by_symbol[ipaize(symbol)] for symbol in word["word"]], [phones_by_symbol[ipaize(symbol)] for symbol in word["realization"]])
 
 def triples_changed(word):
-  end = frozenset({("symbol", "#")})
+  end = frozenset({("symbol", "#"), ("word boundary", "+")})
   triples = to_triples([end] + word[0] + [end])
   return [(triple, triple[1] != word[1][i]) for i, triple in enumerate(triples)]
 

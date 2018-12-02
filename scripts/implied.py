@@ -34,12 +34,12 @@ def implied(feature_1, feature_2):
 		imply.append((("-", feature_1), (nvalues[0], feature_2)))
 	return imply
 
-inferred = [implied(p1, p2) for p1 in cols for p2 in cols if (p1 != p2 and p1 != 'symbol' and p2 != 'symbol')]
-
-result = [x for x in inferred if x != []]
-
 def minimize(phone):
         new_features = list(phone.keys())
         for feature in phone.keys():
                 new_features = [new_feature for new_feature in new_features if feature == new_feature or (((phone[feature], feature), (phone[new_feature], new_feature)) not in implied(feature, new_feature))]
         return {feature: phone[feature] for feature in new_features}
+
+if __name__ == "__main__":
+        inferred = [implied(p1, p2) for p1 in cols for p2 in cols if (p1 != p2 and p1 != 'symbol' and p2 != 'symbol')]
+        result = [x for x in inferred if x != []]

@@ -1,6 +1,6 @@
 import csv, sys, subprocess, json
 from collections import ChainMap
-from strongest_classifier import weakest_classifier, strongest_sound_classifier, strongest_context_classifier, remove_pos, read_phone, remove_indices, add_indices
+from strongest_classifier import weakest_classifier, strongest_sound_classifier, strongest_context_classifier, get_sat_formulas, remove_pos, read_phone, remove_indices, add_indices, get_moresat_formulas
 from implied import all_same
 
 def convertdict(dictname):
@@ -87,30 +87,31 @@ def check_noisy(data, dictname, trueneg):
 if __name__ == "__main__":
 	fname = sys.argv[1]
 	riggle = sys.argv[2]
-	contextfname = sys.argv[3]
-	soundfname = sys.argv[4]
+	#contextfname = sys.argv[3]
+	#soundfname = sys.argv[4]
 	data = read_phone(fname)
 	riggledata = read_phone(riggle)
-	weakcontext = weakest_classifier(contextfname)
-	weaksound = weakest_classifier(soundfname)
+	#weakcontext = weakest_classifier(contextfname)
+	#weaksound = weakest_classifier(soundfname)
 	sounddict = strongest_sound_classifier(fname)
 	strongcontext = strongest_context_classifier(fname)
 	soundkeys = list(sounddict.keys())
 	inferred = [mod_implied(riggledata, p1, p2, sounddict) for p1 in soundkeys for p2 in soundkeys if (p1 != p2 and p1 != 'symbol' and p2 != 'symbol')]
 	elems = [x[0][1] for x in inferred if x != []]
 	strongsound = convertlist([x for x in convertdict(sounddict) if x not in elems])
-	#print(weakcontext)
-	#print(strongsound)
-	#print(strongcontext)
-	#print(weaksound)
+	'''
 	intersect_sound = intersectdict(weaksound,strongsound)
 	intersect_context = intersectdict(weakcontext,strongcontext)
 	diff_sound = diffdict(weaksound,strongsound)
 	diff_context = diffdict(weakcontext,strongcontext)
-	#print(intersect_sound,intersect_context)
-	#print(diff_sound, diff_context)
-	#check_noisy(data,strongsound,weakcontext)
+	print(intersect_sound,intersect_context)
+	print(diff_sound, diff_context)
+	check_noisy(data,strongsound,weakcontext)
 	mergeddict = mergedict(intersect_sound, intersect_context)
-	remove_pos(data, mergeddict)
-	print(extract_feature_value(data, mergeddict, diff_sound))
-	print(extract_feature_value(data, mergeddict, diff_context))
+	'''
+	strongfeatures = mergedict(strongsound, strongcontext)
+	print(strongfeatures)
+	#remove_pos(data, mergeddict)
+	#print(extract_feature_value(data, mergeddict, diff_context))
+	#get_sat_formulas(fname, strongfeatures)
+	get_moresat_formulas(fname, strongfeatures)

@@ -65,12 +65,56 @@ def strongest_sound_classifier(filename):
   phones = read_phones(filename)
   selected_phones = filter(lambda phone: phone["target"] == "1", phones)
   classifier = reduce(intersect, selected_phones)
-  nclassifier = {k : v for (k, v) in classifier.items() if not k.startswith('L') and not k.startswith('R') and k != "target"}
+  nclassifier = {k : v for (k, v) in classifier.items() if not k.startswith('L') and not k.startswith('R') and k != "target" and v != "0"}
   return nclassifier
 
 def strongest_context_classifier(filename):
   phones = read_phones(filename)
   selected_phones = filter(lambda phone: phone["target"] == "1", phones)
   classifier = reduce(intersect, selected_phones)
-  nclassifier = {k : v for (k, v) in classifier.items() if k.startswith('L') or k.startswith('R') and k != "target"}
+  nclassifier = {k : v for (k, v) in classifier.items() if k.startswith('L') and v != "0" or k.startswith('R') and k != "target" and v != "0"}
   return nclassifier
+
+def get_sat_formulas(filename, featuredict):
+  phones = read_phones(filename)
+  selected_features = featuredict.keys()
+  for elem in phones:
+    sat_list = []
+    sat_list.append("(assert ")
+    for (feature,value) in elem.items():
+      if feature == "target" and elem[feature] == "1":
+        sat_list.append("(and ")
+      elif feature == "target" and elem[feature] == "0":
+        sat_list.append("(not (and ")
+    for (feature,value) in elem.items():
+      if feature in selected_features:
+        x = "("+"=> "+feature+"i "+feature+"p"+")" if value == "+" else "("+"=> "+feature+"i "+"("+"not "+ feature + "p"+")"+")"
+        sat_list.append(x)
+    for (feature,value) in elem.items():
+      if feature == "target" and elem[feature] == "1":
+        sat_list.append("))")
+      elif feature == "target" and elem[feature] == "0":
+        sat_list.append(")))")
+    print(''.join(map(str, sat_list)))
+
+def get_moresat_formulas(filename, featuredict):
+  phones = read_phones(filename)
+  selected_features = featuredict.keys()
+  for elem in phones:
+    sat_list = []
+    sat_list.append("(assert ")
+    for (feature,value) in elem.items():
+      if feature == "target" and elem[feature] == "1":
+        sat_list.append("(and ")
+      elif feature == "target" and elem[feature] == "0":
+        sat_list.append("(not (and ")
+    for (feature,value) in elem.items():
+      if feature in selected_features:
+        x = "(" + "=>" + " (and " + feature+ "i" + " false) false)" if value == "0" else "(" + "=>" + " (and " + feature+ "i" + " true) true)" if value == featuredict[feature] else "(" + "=>" + " (and " + feature+ "i" + " true) false)"
+        sat_list.append(x)
+    for (feature,value) in elem.items():
+      if feature == "target" and elem[feature] == "1":
+        sat_list.append("))")
+      elif feature == "target" and elem[feature] == "0":
+        sat_list.append(")))")
+    print(''.join(map(str, sat_list)))

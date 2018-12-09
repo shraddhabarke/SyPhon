@@ -1,0 +1,39 @@
+<!doctype html>
+<html class="no-js" lang="en" dir="ltr">
+<meta charset="utf-8">
+<meta http-equiv="x-ua-compatible" content="ie=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Phonosynth Demo</title>
+
+<link rel="stylesheet" href="css/foundation.css">
+<link rel="stylesheet" href="css/app.css">
+
+<body class="grid-container">
+  <h1>Phonosynth Demo</h1>
+  <div id="rule" class="callout">
+    Upload a file and infer a rule
+  </div>
+  <div class="grid-x align-justify">
+    <label for="csv-upload" class="button cell small-2">
+      Upload file
+      <input id="csv-upload" type="file" class="show-for-sr">
+    </label>
+    <button id="infer" type="button" class="button cell small-2">Infer rule</button>
+  </div>
+  <table id="word-stems" class="row">
+    <thead>
+      <tr>
+        <th>Underlying form
+        <th>Realization
+    <tbody>
+  </table>
+  
+  <script src="js/vendor/jquery.js"></script>
+  <script src="js/vendor/jquery.csv.min.js"></script>
+  <script src="js/vendor/what-input.js"></script>
+  <script src="js/vendor/foundation.min.js"></script>
+  <script>
+    $(document).foundation();
+  </script>
+  <script src="js/app.js"></script>

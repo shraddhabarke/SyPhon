@@ -1,4 +1,5 @@
 import csv, itertools, unicodedata
+from demo import sat
 
 SYMBOL_NORMALIZATION = {
   'g' : 'ɡ'
@@ -14,7 +15,7 @@ def read_features(filename):
   with open(filename, 'r') as f:
     reader = csv.DictReader(f)
     for row in reader:
-      symbol = unicodedata.normalize('NFKC', row.pop('symbol'))
+      symbol = unicodedata.normalize('NFC', row.pop('symbol'))
       symbol = SYMBOL_NORMALIZATION.get(symbol, symbol)
       row['word boundary'] = '-'
       symbols_to_features[symbol] = dict(row)
@@ -35,7 +36,7 @@ def parse_grapheme(grapheme):
   return SYMBOL_TO_FEATURES[SYMBOL_NORMALIZATION.get(grapheme, grapheme)]
 
 def parse_word(word):
-  return [parse_grapheme(grapheme) for grapheme in unicodedata.normalize('NFKC', word)]
+  return [parse_grapheme(grapheme) for grapheme in unicodedata.normalize('NFC', word)]
 
 def parse(words):
   data = []
@@ -53,4 +54,4 @@ def infer_change(data):
   return differences
 
 def infer_rule(data):
-  return (dict(), dict(), dict())
+  return sat.infer_rule(data)

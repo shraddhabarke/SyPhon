@@ -15,11 +15,7 @@ def handle_infer_rule():
 
   words = []
   for stem in request.json['wordStems']:
-    underlying_form = stem['underlyingForm']
-    realization = stem['realization']
-    if not len(underlying_form) == len(realization):
-      abort(400)
-    words.append((underlying_form, realization))
+    words.append((stem['underlyingForm'], stem['realization']))
 
   return jsonify(infer_rule(words))
 

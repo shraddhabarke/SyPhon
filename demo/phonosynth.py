@@ -2,7 +2,12 @@ import csv, itertools, unicodedata
 from demo import sat
 
 SYMBOL_NORMALIZATION = {
-  'g' : 'ɡ'
+  'g': 'ɡ'
+}
+
+SYMBOL_MODIFIERS = {
+  ':': {'long': '+'},
+  'ʰ': {'s.g.': '+'}
 }
 
 def read_features(filename):
@@ -18,6 +23,7 @@ def read_features(filename):
       symbol = unicodedata.normalize('NFC', row.pop('symbol'))
       symbol = SYMBOL_NORMALIZATION.get(symbol, symbol)
       row['word boundary'] = '-'
+      row['long'] = '-'
       symbols_to_features[symbol] = dict(row)
 
   return symbols_to_features
@@ -33,10 +39,21 @@ def triples(it):
   return zip(left, center, right)
 
 def parse_grapheme(grapheme):
-  return SYMBOL_TO_FEATURES[SYMBOL_NORMALIZATION.get(grapheme, grapheme)]
+  symbol = grapheme.pop(0)
+  symbol = SYMBOL_NORMALIZATION.get(symbol, symbol)
+  features = dict(SYMBOL_TO_FEATURES[symbol])
+  for modifier in grapheme:
+    features.update(SYMBOL_MODIFIERS[modifier])
+  return features
 
 def parse_word(word):
-  return [parse_grapheme(grapheme) for grapheme in unicodedata.normalize('NFC', word)]
+  graphemes = []
+  for char in unicodedata.normalize('NFC', word):
+    if char in SYMBOL_MODIFIERS.keys():
+      graphemes[-1].append(char)
+    else:
+      graphemes.append([char])
+  return [parse_grapheme(grapheme) for grapheme in graphemes]
 
 def parse(words):
   data = []

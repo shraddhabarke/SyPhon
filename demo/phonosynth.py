@@ -7,7 +7,10 @@ SYMBOL_NORMALIZATION = {
 
 SYMBOL_MODIFIERS = {
   ':': {'long': '+'},
-  'ʰ': {'s.g.': '+'}
+  'ʰ': {'s.g.': '+'},
+  'ʻ': {'c.g.': '+'},
+  '̈': {'front': '-', 'back': '-'},
+  '̧': {}
 }
 
 def read_features(filename):
@@ -20,7 +23,7 @@ def read_features(filename):
   with open(filename, 'r') as f:
     reader = csv.DictReader(f)
     for row in reader:
-      symbol = unicodedata.normalize('NFC', row.pop('symbol'))
+      symbol = unicodedata.normalize('NFD', row.pop('symbol'))
       symbol = SYMBOL_NORMALIZATION.get(symbol, symbol)
       row['word boundary'] = '-'
       row['long'] = '-'
@@ -28,8 +31,18 @@ def read_features(filename):
 
   return symbols_to_features
 
+def get_sizes(symbols):
+  feature_sizes = {}
+  total_features = 0
+  for symbol in symbols:
+    total_features += 1
+    for feature, value in symbol.items():
+      feature_sizes[(feature, value)] = feature_sizes.get((feature, value), 0) + 1
+  return {f: total_features - size for f, size in feature_sizes.items()}
+
 SYMBOL_TO_FEATURES = read_features('../datasets/riggle.csv')
 FEATURES_TO_SYMBOL = {frozenset(features.items()): symbol for symbol, features in SYMBOL_TO_FEATURES.items()}
+FEATURE_SIZES = get_sizes(SYMBOL_TO_FEATURES.values())
 
 def triples(it):
   left, center = itertools.tee(it)
@@ -39,8 +52,22 @@ def triples(it):
   return zip(left, center, right)
 
 def parse_grapheme(grapheme):
-  symbol = grapheme.pop(0)
-  symbol = SYMBOL_NORMALIZATION.get(symbol, symbol)
+  symbol = ''
+  features = None
+  for char in list(grapheme):
+    grapheme.pop(0)
+    symbol += char
+    normalized_symbol = SYMBOL_NORMALIZATION.get(symbol, symbol)
+    if normalized_symbol in SYMBOL_TO_FEATURES:
+      symbol = normalized_symbol
+      break
+  for char in list(grapheme):
+    normalized_symbol = SYMBOL_NORMALIZATION.get(symbol + char, symbol + char)
+    if normalized_symbol not in SYMBOL_TO_FEATURES:
+      break
+    symbol = normalized_symbol
+    grapheme.pop(0)
+  print(symbol)
   features = dict(SYMBOL_TO_FEATURES[symbol])
   for modifier in grapheme:
     features.update(SYMBOL_MODIFIERS[modifier])
@@ -48,7 +75,7 @@ def parse_grapheme(grapheme):
 
 def parse_word(word):
   graphemes = []
-  for char in unicodedata.normalize('NFC', word):
+  for char in unicodedata.normalize('NFD', word):
     if char in SYMBOL_MODIFIERS.keys():
       graphemes[-1].append(char)
     else:
@@ -66,9 +93,7 @@ def parse(words):
 
 def infer_change(data):
   changed = [(old, new) for (_, old, _), new in data if old != new]
-  old, new = changed[0]
-  differences = {feature: value for feature, value in new.items() if value != old[feature]}
-  return differences
+  return sat.infer_change(changed)
 
-def infer_rule(data):
-  return sat.infer_rule(data)
+def infer_rule(data, change_rule):
+  return sat.infer_rule(data, change_rule, FEATURE_SIZES)

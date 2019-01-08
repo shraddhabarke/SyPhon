@@ -29,7 +29,7 @@ def format_features(features):
 def infer_rule(words):
   data = phonosynth.parse(words)
   change = phonosynth.infer_change(data)
-  left, phone, right = phonosynth.infer_rule(data)
+  left, phone, right = phonosynth.infer_rule(data, change)
   
   return {
     'phone': format_features(phone),

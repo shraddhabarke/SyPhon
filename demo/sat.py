@@ -38,14 +38,20 @@ def infer_change(pairs):
   for old, new in pairs:
     conjunction = []
     for feature, value in old.items():
-      feature_included = z3.Bool(f'|{feature} included|')
-      feature_positive = z3.Bool(f'|{feature} positive|')
-      included_features[feature_included] = feature
-      positive_features[feature] = feature_positive
+      control_included = z3.Bool(f'|{feature} included|')
+      control_positive = z3.Bool(f'|{feature} positive|')
+      input_included = value != '0'
+      input_positive = value == '+'
+      output_included = new[feature] != '0'
+      output_positive = new[feature] == '+'
+
+      included_features[control_included] = feature
+      positive_features[feature] = control_positive
+
       conjunction.append(z3.If(
-        z3.And(feature_included, value != '0'),
-        feature_positive == (new[feature] == '+'),
-        new[feature] == value
+        z3.And(control_included, input_included),
+        z3.And(output_included == control_included, output_positive == control_positive),
+        z3.And(output_included == input_included, output_positive == input_positive)
       ))
     solver.add(z3.And(*conjunction))
 
@@ -76,8 +82,10 @@ def query_z3(triples_changed, feature_sizes):
     'center': 0,
     'right': 1000
   }
-  for ident, (feature, position) in idents_to_features.items():
-    solver.add_soft(z3.Not(z3.Bool(ident)), weight=10000 + position_weights[position] + feature_sizes[(feature, shared[(feature, position)])])
+  for control_included, (feature, position) in idents_to_features.items():
+    # We use 10000 so that including new features is much worse than using more specific features.
+    weight = 10000 + position_weights[position] + feature_sizes[(feature, shared[(feature, position)])]
+    solver.add_soft(z3.Not(z3.Bool(control_included)), weight = weight)
 
   for triple, changed in triples_changed:
     conjunction = []
@@ -85,15 +93,14 @@ def query_z3(triples_changed, feature_sizes):
       for feature in phone.keys():
         position = POSITIONS[i]
         if (feature, position) in shared:
-          ident = to_ident(feature, position)
-          included = phone[feature] != '0'
-          matches = phone[feature] == shared[(feature, position)]
-          conjunction.append(z3.Implies(z3.And(z3.Bool(ident), included), matches))
+          control_included = z3.Bool(to_ident(feature, position))
+          control_positive = shared[(feature, position)] == '+'
+          input_included = phone[feature] != '0'
+          input_positive = phone[feature] == '+'
+          conjunction.append(z3.Implies(z3.And(control_included, input_included),
+                                        control_positive == input_positive))
     if conjunction != []:
-      if changed:
-        solver.add(z3.And(*conjunction))
-      else:
-        solver.add(z3.Not(z3.And(*conjunction)))
+      solver.add(z3.And(*conjunction) == changed)
 
   if solver.check() == z3.sat:
     rule = (dict(), dict(), dict())

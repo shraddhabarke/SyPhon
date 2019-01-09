@@ -51,7 +51,7 @@ def infer_change(pairs):
       conjunction.append(z3.If(
         z3.And(control_included, input_included),
         z3.And(output_included == control_included, output_positive == control_positive),
-        z3.And(output_included == input_included, output_positive == input_positive)
+        z3.Implies(z3.And(input_included, output_included), output_positive == input_positive)
       ))
     solver.add(z3.And(*conjunction))
 

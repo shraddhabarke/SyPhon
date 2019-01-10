@@ -1,5 +1,5 @@
 import csv, itertools, unicodedata
-from demo import sat
+from demo import sat, implied_features
 
 SYMBOL_NORMALIZATION = {
   'g': 'ɡ'
@@ -43,6 +43,10 @@ def get_sizes(symbols):
 SYMBOL_TO_FEATURES = read_features('../datasets/riggle.csv')
 FEATURES_TO_SYMBOL = {frozenset(features.items()): symbol for symbol, features in SYMBOL_TO_FEATURES.items()}
 FEATURE_SIZES = get_sizes(SYMBOL_TO_FEATURES.values())
+FEATURES = {}
+for features in SYMBOL_TO_FEATURES.values():
+  FEATURES |= features.keys()
+IMPLICATIONS, REVERSE_IMPLICATIONS = implied_features.get_implications(SYMBOL_TO_FEATURES.values(), FEATURES)
 
 def triples(it):
   left, center = itertools.tee(it)
@@ -67,7 +71,6 @@ def parse_grapheme(grapheme):
       break
     symbol = normalized_symbol
     grapheme.pop(0)
-  print(symbol)
   features = dict(SYMBOL_TO_FEATURES[symbol])
   for modifier in grapheme:
     features.update(SYMBOL_MODIFIERS[modifier])
@@ -93,7 +96,7 @@ def parse(words):
 
 def infer_change(data):
   changed = [(old, new) for (_, old, _), new in data if old != new]
-  return sat.infer_change(changed)
+  return sat.infer_change(changed, REVERSE_IMPLICATIONS)
 
 def infer_rule(data, change_rule):
-  return sat.infer_rule(data, change_rule, FEATURE_SIZES)
+  return sat.infer_rule(data, change_rule, FEATURE_SIZES, FEATURES)

@@ -1,12 +1,12 @@
 import z3
 
-def infer_rule(data, change_rule, feature_sizes):
+def infer_rule(data, change_rule, feature_sizes, features):
   triples_changed = []
   for (l, c, r), new_c in data:
     changed_c = apply_change(c, change_rule)
     if changed_c !=  c:
       triples_changed.append(((l, c, r), c != new_c))
-  rule = query_z3(triples_changed, feature_sizes)
+  rule = query_z3(triples_changed, feature_sizes, features)
   return rule
 
 POSITIONS = ['left', 'center', 'right']
@@ -31,7 +31,7 @@ def apply_change(features, rule):
   new_features.update(rule)
   return new_features
 
-def infer_change(pairs):
+def infer_change(pairs, reverse_implications):
   solver = z3.Optimize()
   included_features = {}
   positive_features = {}
@@ -48,11 +48,31 @@ def infer_change(pairs):
       included_features[control_included] = feature
       positive_features[feature] = control_positive
 
+      positive_explanations = []
+      if (feature, '+') in reverse_implications:
+        for implying_feature, implying_value in reverse_implications[(feature, '+')]:
+          implying_positive = z3.Bool(f'|{feature} positive|')
+          if implying_value == '+':
+            positive_explanations.append(implying_positive)
+          else:
+            positive_explanations.append(z3.Not(implying_positive))
+
+      negative_explanations = []
+      if (feature, '-') in reverse_implications:
+        for implying_feature, implying_value in reverse_implications[(feature, '-')]:
+          implying_positive = z3.Bool(f'|{feature} positive|')
+          if implying_value == '+':
+            positive_explanations.append(implying_positive)
+          else:
+            positive_explanations.append(z3.Not(implying_positive))
+
       conjunction.append(z3.If(
         z3.And(control_included, input_included),
         z3.And(output_included == control_included, output_positive == control_positive),
-        z3.Implies(z3.And(input_included, output_included), output_positive == input_positive)
-      ))
+        z3.Implies(z3.And(input_included, output_included),
+                   z3.Or(output_positive == input_positive,
+                         z3.And(output_positive, z3.Or(*positive_explanations)),
+                         z3.And(z3.Not(output_positive), z3.Or(*negative_explanations))))))
     solver.add(z3.And(*conjunction))
 
   for var in included_features.keys():
@@ -70,7 +90,7 @@ def infer_change(pairs):
     print('unsat')
     
     
-def query_z3(triples_changed, feature_sizes):
+def query_z3(triples_changed, feature_sizes, features):
   shared = shared_features([triple for triple, changed in triples_changed if changed])
   idents_to_features = {to_ident(feature, position): (feature, position) for feature, position in shared.keys()}
   
@@ -90,15 +110,14 @@ def query_z3(triples_changed, feature_sizes):
   for triple, changed in triples_changed:
     conjunction = []
     for i, phone in enumerate(triple):
-      for feature in phone.keys():
+      for feature in features:
         position = POSITIONS[i]
         if (feature, position) in shared:
           control_included = z3.Bool(to_ident(feature, position))
           control_positive = shared[(feature, position)] == '+'
-          input_included = phone[feature] != '0'
-          input_positive = phone[feature] == '+'
-          conjunction.append(z3.Implies(z3.And(control_included, input_included),
-                                        control_positive == input_positive))
+          input_included = phone[feature] != '0' if feature in phone else False
+          input_positive = phone[feature] == '+' if feature in phone else False
+          conjunction.append(z3.Implies(control_included, z3.And(input_included, control_positive == input_positive)))
     if conjunction != []:
       solver.add(z3.And(*conjunction) == changed)
 

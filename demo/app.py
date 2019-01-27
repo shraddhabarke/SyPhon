@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from flask import Flask, abort, jsonify, request
-from demo import phonosynth
+from demo import ipa_data, phonosynth
 
 app = Flask(__name__, static_url_path='')
 
@@ -20,7 +20,7 @@ def handle_infer_rule():
   return jsonify(infer_rule(words))
 
 def format_features(features):
-  symbol = phonosynth.FEATURES_TO_SYMBOL.get(frozenset(features.items()))
+  symbol = ipa_data.FEATURES_TO_SYMBOLS.get(frozenset(features.items()))
   if symbol:
     return symbol
   else:

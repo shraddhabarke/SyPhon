@@ -1,5 +1,5 @@
 import itertools
-from demo import ipa_data, parse_ipa, sat
+from demo import parse_ipa, sat
 
 def triples(it):
   left, center = itertools.tee(it)
@@ -19,7 +19,7 @@ def parse(words):
 
 def infer_change(data):
   changed = [(old, new) for (_, old, _), new in data if old != new]
-  return sat.infer_change(changed, ipa_data.IMPLICATIONS_TO_FEATURES)
+  return sat.infer_change(changed)
 
 def infer_rule(data, change_rule):
-  return sat.infer_rule(data, change_rule, ipa_data.FEATURE_WEIGHTS, ipa_data.FEATURES)
+  return sat.infer_rule(data, change_rule)

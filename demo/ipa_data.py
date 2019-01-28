@@ -48,11 +48,22 @@ def is_diacritic(symbol):
 def get_features(symbol):
   return SYMBOLS_TO_FEATURES[symbol]
 
+# Returns the weight of a feature-value pair. Lower weight pairs describe more
+# sounds.
+def get_weight(feature, value):
+  return FEATURE_WEIGHTS[(feature, value)]
+
+# Get the set of (feature, value) pairs which imply this feature-value pair.
+def get_implying(feature, value):
+  return IMPLICATIONS_TO_FEATURES.get((feature, value), frozenset())
+
 # Read in feature data from FEATURES_FILE.
 def read_features():
+  global FEATURES
   with open(FEATURES_FILE, 'r') as f:
     reader = csv.DictReader(f)
     FEATURES.update(set(reader.fieldnames) - {'symbol', 'type'})
+    FEATURES = frozenset(FEATURES)
     for row in reader:
       symbol = normalize(row.pop('symbol'))
       symbol_type = row.pop('type')
@@ -71,6 +82,7 @@ def calc_weights():
 
 # Populate implications dicts using feature data.
 def find_implications():
+  global FEATURES_TO_IMPLICATIONS, IMPLICATIONS_TO_FEATURES
   def implies(fv1, fv2):
     for features in FEATURES_TO_SYMBOLS:
       if fv1 in features and fv2 not in features:
@@ -80,11 +92,13 @@ def find_implications():
   for fv1, fv2 in fv_pairs:
     if implies(fv1, fv2):
       if fv1 not in FEATURES_TO_IMPLICATIONS:
-        FEATURES_TO_IMPLICATIONS[fv1] = []
+        FEATURES_TO_IMPLICATIONS[fv1] = set()
       if fv2 not in IMPLICATIONS_TO_FEATURES:
-        IMPLICATIONS_TO_FEATURES[fv2] = []
-      FEATURES_TO_IMPLICATIONS[fv1].append(fv2)
-      IMPLICATIONS_TO_FEATURES[fv2].append(fv1)
+        IMPLICATIONS_TO_FEATURES[fv2] = set()
+      FEATURES_TO_IMPLICATIONS[fv1].add(fv2)
+      IMPLICATIONS_TO_FEATURES[fv2].add(fv1)
+  FEATURES_TO_IMPLICATIONS = {k: frozenset(v) for k, v in FEATURES_TO_IMPLICATIONS.items()}
+  IMPLICATIONS_TO_FEATURES = {k: frozenset(v) for k, v in IMPLICATIONS_TO_FEATURES.items()}
 
 # Read feature data in and initialize all data structures.
 def init():

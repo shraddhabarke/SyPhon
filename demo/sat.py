@@ -1,12 +1,13 @@
+from demo import ipa_data
 import z3
 
-def infer_rule(data, change_rule, feature_sizes, features):
+def infer_rule(data, change_rule):
   triples_changed = []
   for (l, c, r), new_c in data:
     changed_c = apply_change(c, change_rule)
     if changed_c !=  c:
       triples_changed.append(((l, c, r), c != new_c))
-  rule = query_z3(triples_changed, feature_sizes, features)
+  rule = query_z3(triples_changed)
   return rule
 
 POSITIONS = ['left', 'center', 'right']
@@ -31,7 +32,7 @@ def apply_change(features, rule):
   new_features.update(rule)
   return new_features
 
-def infer_change(pairs, reverse_implications):
+def infer_change(pairs):
   solver = z3.Optimize()
   included_features = {}
   positive_features = {}
@@ -49,22 +50,20 @@ def infer_change(pairs, reverse_implications):
       positive_features[feature] = control_positive
 
       positive_explanations = []
-      if (feature, '+') in reverse_implications:
-        for implying_feature, implying_value in reverse_implications[(feature, '+')]:
-          implying_positive = z3.Bool(f'|{feature} positive|')
-          if implying_value == '+':
-            positive_explanations.append(implying_positive)
-          else:
-            positive_explanations.append(z3.Not(implying_positive))
+      for implying_feature, implying_value in ipa_data.get_implying(feature, '+'):
+        implying_positive = z3.Bool(f'|{feature} positive|')
+        if implying_value == '+':
+          positive_explanations.append(implying_positive)
+        else:
+          positive_explanations.append(z3.Not(implying_positive))
 
       negative_explanations = []
-      if (feature, '-') in reverse_implications:
-        for implying_feature, implying_value in reverse_implications[(feature, '-')]:
-          implying_positive = z3.Bool(f'|{feature} positive|')
-          if implying_value == '+':
-            positive_explanations.append(implying_positive)
-          else:
-            positive_explanations.append(z3.Not(implying_positive))
+      for implying_feature, implying_value in ipa_data.get_implying(feature, '-'):
+        implying_positive = z3.Bool(f'|{feature} positive|')
+        if implying_value == '+':
+          positive_explanations.append(implying_positive)
+        else:
+          positive_explanations.append(z3.Not(implying_positive))
 
       conjunction.append(z3.If(
         z3.And(control_included, input_included),
@@ -90,7 +89,7 @@ def infer_change(pairs, reverse_implications):
     print('unsat')
     
     
-def query_z3(triples_changed, feature_sizes, features):
+def query_z3(triples_changed):
   shared = shared_features([triple for triple, changed in triples_changed if changed])
   idents_to_features = {to_ident(feature, position): (feature, position) for feature, position in shared.keys()}
   
@@ -104,13 +103,13 @@ def query_z3(triples_changed, feature_sizes, features):
   }
   for control_included, (feature, position) in idents_to_features.items():
     # We use 10000 so that including new features is much worse than using more specific features.
-    weight = 10000 + position_weights[position] + feature_sizes[(feature, shared[(feature, position)])]
+    weight = 10000 + position_weights[position] + ipa_data.get_weight(feature, shared[(feature, position)])
     solver.add_soft(z3.Not(z3.Bool(control_included)), weight = weight)
 
   for triple, changed in triples_changed:
     conjunction = []
     for i, phone in enumerate(triple):
-      for feature in features:
+      for feature in ipa_data.FEATURES:
         position = POSITIONS[i]
         if (feature, position) in shared:
           control_included = z3.Bool(to_ident(feature, position))

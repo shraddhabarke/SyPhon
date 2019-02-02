@@ -10,13 +10,13 @@ function populateWordStems() {
   $('#word-stems > tbody').replaceWith(tableBody);
 }
 
-function renderRule(rule) {
+function renderRules(rules) {
   function renderPhone(phone) {
     let phoneString = '';
 
     if ($.type(phone) === 'string') {
       phoneString += phone;
-    } else if (phone.length === 0) {
+    } else if (phone === null) {
       phoneString += '_';
     } else {
       phoneString += '[';
@@ -28,17 +28,31 @@ function renderRule(rule) {
 
     return phoneString;
   }
-  
-  let ruleString =
-      renderPhone(rule.phone) +
-      ' → ' +
-      renderPhone(rule.change) +
-      ' / ' +
-      renderPhone(rule.context.left) +
-      ' _ ' +
-      renderPhone(rule.context.right);
 
-  $('#rule').text(ruleString);
+  function renderRule(rule) {
+    let target = renderPhone(rule.target);
+    let change = renderPhone(rule.change);
+
+    let context = '_';
+    if (rule.context.left !== null) {
+      let left = renderPhone(rule.context.left);
+      context = `${left} ${context}`;
+    }
+    if (rule.context.right !== null) {
+      let right = renderPhone(rule.context.right);
+      context = `${context} ${right}`;
+    }
+
+    return `${target} → ${change} / ${context}`;
+  }
+
+  rulesElem = $('#rules');
+  rulesElem.empty();
+  rules
+    .map(renderRule)
+    .forEach(rule => {
+    $('<li>').text(rule).appendTo(rulesElem);
+  });
 }
 
 $('#csv-upload').change(function () {
@@ -68,7 +82,7 @@ $('#infer').click(() => {
     contentType: 'application/json',
     data: JSON.stringify(payload)
   })
-    .then(renderRule)
+    .then(renderRules)
     .catch(error => {
       console.log(error);
     });

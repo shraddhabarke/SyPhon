@@ -18,6 +18,9 @@ SYMBOLS_TO_FEATURES = {
 FEATURES_TO_SYMBOLS = {
   frozenset({('word boundary', '+')}): '#'
 }
+FEATURES_TO_LETTERS = {
+  frozenset({('word boundary', '+')}): '#'
+}
 
 # Set of feature names.
 FEATURES = {'word boundary'}
@@ -57,6 +60,11 @@ def get_weight(feature, value):
 def get_implying(feature, value):
   return IMPLICATIONS_TO_FEATURES.get((feature, value), frozenset())
 
+def apply_change(change, phone):
+  phone_copy = phone.copy()
+  phone_copy.update(change)
+  return phone_copy
+
 # Read in feature data from FEATURES_FILE.
 def read_features():
   global FEATURES
@@ -68,10 +76,13 @@ def read_features():
       symbol = normalize(row.pop('symbol'))
       symbol_type = row.pop('type')
       row['word boundary'] = '-'
-      SYMBOLS_TO_FEATURES[symbol] = dict(row)
-      FEATURES_TO_SYMBOLS[frozenset(row.items())] = symbol
+      features = {k: v for k, v in row.items() if v != ''}
+      SYMBOLS_TO_FEATURES[symbol] = features
+      FEATURES_TO_SYMBOLS[frozenset(features.items())] = symbol
       if symbol_type == 'diacritic':
         DIACRITICS.add(symbol)
+      elif symbol_type == 'letter':
+        FEATURES_TO_LETTERS[frozenset(features.items())] = symbol
 
 # Populate FEATURE_WEIGHTS based on features data.
 def calc_weights():

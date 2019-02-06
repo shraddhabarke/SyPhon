@@ -1,4 +1,4 @@
-from demo import ipa_data
+from . import ipa_data
 
 # Convert a list of IPA symbols to a list of lists of symbols, representing the
 # individual phones. E.g. ['t', 'ʰ', 'i'] becomes [['t', 'ʰ'], ['i']].

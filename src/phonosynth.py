@@ -1,5 +1,5 @@
 import itertools
-from demo import ipa_data, parse_ipa, sat
+from . import ipa_data, parse_ipa, sat
 
 def triples(it):
   left, center = itertools.tee(it)

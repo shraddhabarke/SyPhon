@@ -1,8 +1,8 @@
 import csv, unicodedata
 from itertools import product
 
-# The file where IPA data is stored.
-FEATURES_FILE = '../datasets/riggle.csv'
+# The file where IPA data is stored, relative to the project root.
+FEATURES_FILE = 'datasets/riggle.csv'
 
 # Map of IPA symbols to their preferred Unicode character.
 IPA_NORMALIZATION = {

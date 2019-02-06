@@ -1,7 +1,5 @@
-#!/usr/bin/env python3
-
 from flask import Flask, abort, jsonify, request
-from demo import ipa_data, phonosynth
+from . import ipa_data, phonosynth
 
 app = Flask(__name__, static_url_path='')
 
@@ -46,6 +44,3 @@ def infer_rule(words):
         }
       })
   return response
-
-if __name__ == '__main__':
-  app.run()

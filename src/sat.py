@@ -1,4 +1,4 @@
-from demo import ipa_data
+from . import ipa_data
 import z3
 
 IDENT = 0

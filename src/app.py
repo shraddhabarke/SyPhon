@@ -1,11 +1,11 @@
-from flask import Flask, abort, jsonify, request
+from flask import Flask, abort, jsonify, request, render_template
 from . import ipa_data, phonosynth
 
 app = Flask(__name__, static_url_path='')
 
 @app.route('/')
 def handle_homepage():
-  return app.send_static_file('index.html')
+  return render_template('index.html')
 
 @app.route('/api/infer_rule', methods=['POST'])
 def handle_infer_rule():

@@ -22,6 +22,6 @@ def phone_to_features(phone):
 # Convert a string representation of an IPA transcription to a list of feature
 # dictionaries for each phone.
 def parse(transcription):
-  symbols = ipa_data.normalize(transcription)
+  symbols = ipa_data.normalize_combining(transcription)
   phones = group_phones(symbols)
   return [phone_to_features(phone) for phone in phones]

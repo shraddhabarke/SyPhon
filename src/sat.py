@@ -101,14 +101,24 @@ def query_z3(triples_changed):
 
   soft_assertions = []
   position_weights = {
-    'left': 1000,
-    'center': 0,
-    'right': 1000
+    'left': 20000,
+    'center': 10000,
+    'right': 20000
   }
   for control_included, (feature, position) in idents_to_features.items():
-    # We use 10000 so that including new features is much worse than using more specific features.
-    weight = 10000 + position_weights[position] + ipa_data.get_weight(feature, shared[(feature, position)])
-    opt.add_soft(z3.Not(z3.Bool(control_included)), weight = weight)
+    # # We use 10000 so that including new features is much worse than using more specific features.
+    # weight = 10000 + position_weights[position] + ipa_data.get_weight(feature, shared[(feature, position)])
+    opt.add_soft(z3.Not(z3.Bool(control_included)), weight = position_weights[position])
+
+  print(ipa_data.FEATURE_WEIGHTS)
+  for (feature, position), value in shared.items():
+    control_included = z3.Bool(to_ident(feature, position))
+    control_positive = shared[(feature, position)] == '+'
+    input_included = value != '0'
+    input_positive = value == '+'
+    weight = ipa_data.get_weight(feature, value)
+    print((feature, value, position, weight))
+    opt.add_soft(z3.Not(z3.And(control_included, input_included, control_positive == input_positive)), weight = weight)
 
   for triple, changed in triples_changed:
     conjunction = []

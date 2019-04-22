@@ -6,8 +6,8 @@
 
 <title>Phonosynth Demo</title>
 
-<link rel="stylesheet" href="/{{ url_for('static', filename='css/foundation.css') }}">
-<link rel="stylesheet" href="/{{ url_for('static', filename='css/app.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/foundation.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 
 <body class="grid-container">
   <h1>Phonosynth Demo</h1>
@@ -29,10 +29,10 @@
     <tbody>
   </table>
   
-  <script src="/{{ url_for('static', filename='js/vendor/jquery.js') }}"></script>
-  <script src="/{{ url_for('static', filename='js/vendor/jquery.csv.min.js') }}"></script>
-  <script src="/{{ url_for('static', filename='js/vendor/what-input.js') }}"></script>
-  <script src="/{{ url_for('static', filename='js/vendor/foundation.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/vendor/jquery.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/vendor/jquery.csv.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/vendor/what-input.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/vendor/foundation.min.js') }}"></script>
   <script>
     $(document).foundation();
   </script>

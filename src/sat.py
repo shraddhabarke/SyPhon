@@ -33,58 +33,68 @@ def shared_features(triples):
 
 def infer_change(old, new):
   solver = z3.Optimize()
-  included_features = {}
+  negative_features = {}
   positive_features = {}
+  vars_to_features = {}
   for feature, value in old.items():
-    control_included = z3.Bool(f'|{feature} included|')
+    control_negative = z3.Bool(f'|{feature} negative|')
     control_positive = z3.Bool(f'|{feature} positive|')
-    input_included = value != '0'
+    input_negative = value == '-'
     input_positive = value == '+'
-    output_included = new[feature] != '0'
+    output_negative = new[feature] == '-'
     output_positive = new[feature] == '+'
+    vars_to_features[control_negative] = (feature, '-')
+    vars_to_features[control_positive] = (feature, '+')
 
-    included_features[control_included] = feature
+    negative_features[feature] = control_negative
     positive_features[feature] = control_positive
 
     positive_explanations = []
     for implying_feature, implying_value in ipa_data.get_implying(feature, '+'):
-      implying_included = z3.Bool(f'|{implying_feature} included|')
+      implying_negative = z3.Bool(f'|{implying_feature} negative|')
       implying_positive = z3.Bool(f'|{implying_feature} positive|')
       if implying_value == '+':
-        positive_explanations.append(z3.And(implying_included, implying_positive))
-      else:
-        positive_explanations.append(z3.And(implying_included, z3.Not(implying_positive)))
+        positive_explanations.append(implying_positive)
+      elif implying_value == '-':
+        positive_explanations.append(implying_negative)
 
     negative_explanations = []
     for implying_feature, implying_value in ipa_data.get_implying(feature, '-'):
-      implying_included = z3.Bool(f'|{implying_feature} included|')
+      implying_negative = z3.Bool(f'|{implying_feature} negative|')
       implying_positive = z3.Bool(f'|{implying_feature} positive|')
       if implying_value == '+':
-        positive_explanations.append(z3.And(implying_included, implying_positive))
-      else:
-        positive_explanations.append(z3.And(implying_included, z3.Not(implying_positive)))
+        negative_explanations.append(implying_positive)
+      elif implying_value == '-':
+        negative_explanations.append(implying_negative)
 
-    if not output_included:
-      solver.add(z3.Not(control_included))
+    zero_explanations = []
+    for implying_feature, implying_value in ipa_data.get_implying(feature, '0'):
+      implying_negative = z3.Bool(f'|{implying_feature} negative|')
+      implying_positive = z3.Bool(f'|{implying_feature} positive|')
+      if implying_value == '+':
+        zero_explanations.append(implying_positive)
+      elif implying_value == '-':
+        zero_explanations.append(implying_negative)
 
-    solver.add(z3.If(
-      z3.And(control_included, input_included),
-      z3.And(output_included == control_included, output_positive == control_positive),
-      z3.Implies(z3.And(input_included, output_included),
-                 z3.Or(output_positive == input_positive,
-                       z3.And(output_positive, z3.Or(*positive_explanations), z3.Not(z3.Or(*negative_explanations))),
-                       z3.And(z3.Not(output_positive), z3.Or(*negative_explanations), z3.Not(z3.Or(*positive_explanations)))))))
+    solver.add(z3.Implies(control_negative, output_negative))
+    solver.add(z3.Implies(control_positive, output_positive))
+    solver.add(z3.Implies(input_negative, z3.Or(output_negative, control_positive, *positive_explanations, *zero_explanations)))
+    solver.add(z3.Implies(input_positive, z3.Or(output_positive, control_negative, *negative_explanations, *zero_explanations)))
 
-  for var in included_features.keys():
+    solver.add(z3.Not(z3.And(control_negative, control_positive)))
+
+  for var in negative_features.values():
+    solver.add_soft(z3.Not(var))
+
+  for var in positive_features.values():
     solver.add_soft(z3.Not(var))
 
   if solver.check() == z3.sat:
     rule = {}
     model = solver.model()
-    for ident, feature in included_features.items():
+    for ident, (feature, val) in vars_to_features.items():
       if model[ident]:
-        positive_feature = positive_features[feature]
-        rule[feature] = '+' if model[positive_feature] else '-'
+        rule[feature] = val
     return rule
   else:
     print('unsat')

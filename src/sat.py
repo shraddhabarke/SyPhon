@@ -133,14 +133,12 @@ def infer_condition(triples_changed):
         rule[POSITIONS.index(position)][feature] = value
     return rule
   else:
-    def to_symbols(triple):
-      return tuple(ipa_data.FEATURES_TO_SYMBOLS.get(frozenset(features.items()), features) for features in triple)
-
     unsat_core = solver.unsat_core()
-    print('Unsat core:')
+    print('\033[1;31mUnsatisfiable constraints:\033[0;31m') # Set text color to red
     for name in unsat_core:
       formula, triple, changed = formulas[str(name)]
-      formatted_triple = to_symbols(triple)
+      formatted_triple = tuple(ipa_data.FEATURES_TO_SYMBOLS.get(frozenset(features.items()), features) for features in triple)
       changed_str = 'changed' if changed else "didn't change"
       print(f'{formatted_triple} {changed_str}')
+    print('\033[0;0m') # Reset text color and add a newline
     return None

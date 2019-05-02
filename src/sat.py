@@ -49,6 +49,7 @@ def infer_change(old, new):
     input_positive = value == '+'
     output_negative = new[feature] == '-'
     output_positive = new[feature] == '+'
+    output_zero = z3.And(z3.Not(output_negative), z3.Not(output_positive))
     vars_to_features[control_negative] = (feature, '-')
     vars_to_features[control_positive] = (feature, '+')
 
@@ -73,20 +74,10 @@ def infer_change(old, new):
       elif implying_value == '-':
         negative_explanations.append(implying_negative)
 
-    zero_explanations = []
-    for implying_feature, implying_value in ipa_data.get_implying(feature, '0'):
-      implying_negative = z3.Bool(f'|{implying_feature} negative|')
-      implying_positive = z3.Bool(f'|{implying_feature} positive|')
-      if implying_value == '+':
-        zero_explanations.append(implying_positive)
-      elif implying_value == '-':
-        zero_explanations.append(implying_negative)
-
     solver.add(z3.Implies(control_negative, output_negative))
     solver.add(z3.Implies(control_positive, output_positive))
-    solver.add(z3.Implies(input_negative, z3.Or(output_negative, control_positive, *positive_explanations, *zero_explanations)))
-    solver.add(z3.Implies(input_positive, z3.Or(output_positive, control_negative, *negative_explanations, *zero_explanations)))
-
+    solver.add(z3.Implies(input_negative, z3.Or(output_negative, control_positive, output_zero, *positive_explanations)))
+    solver.add(z3.Implies(input_positive, z3.Or(output_positive, control_negative, output_zero, *negative_explanations)))
     solver.add(z3.Not(z3.And(control_negative, control_positive)))
 
   for var in negative_features.values():
@@ -126,8 +117,8 @@ def infer_condition(triples_changed):
     conjunction = []
     for feature, position, value in product(ipa_data.FEATURES, POSITIONS, ['+', '-']):
       ident = z3.Bool(f'{feature} {position} {value}')
-      conjunct = z3.Implies(ident, lookup(triple, feature, position) == value)
-      conjunction.append(conjunct)
+      if lookup(triple, feature, position) != value:
+        conjunction.append(z3.Not(ident))
     name = fresh()
     assertion = z3.And(*conjunction) == changed
     formulas[name] = (assertion, triple, changed)
@@ -142,21 +133,14 @@ def infer_condition(triples_changed):
         rule[POSITIONS.index(position)][feature] = value
     return rule
   else:
+    def to_symbols(triple):
+      return tuple(ipa_data.FEATURES_TO_SYMBOLS.get(frozenset(features.items()), features) for features in triple)
+
     unsat_core = solver.unsat_core()
     print('Unsat core:')
     for name in unsat_core:
-      formula, (l, c, r), changed = formulas[name]
-      print('Formula:')
-      print(formula)
-      print('Left:')
-      print(ipa_data.FEATURES_TO_SYMBOLS.get(frozenset(l.items()), l))
-      print('Center:')
-      print(ipa_data.FEATURES_TO_SYMBOLS.get(frozenset(c.items()), c))
-      print('Right:')
-      print(ipa_data.FEATURES_TO_SYMBOLS.get(frozenset(r.items()), r))
-      print('Changed:')
-      print(changed)
-      print(formulas[name])
-    print('Shared:')
-    print(shared)
+      formula, triple, changed = formulas[str(name)]
+      formatted_triple = to_symbols(triple)
+      changed_str = 'changed' if changed else "didn't change"
+      print(f'{formatted_triple} {changed_str}')
     return None

@@ -1,4 +1,6 @@
+import unicodedata
 from . import ipa_data
+from .phone import Phone
 
 # Convert a list of IPA symbols to a list of lists of symbols, representing the
 # individual phones. E.g. ['t', 'ʰ', 'i'] becomes [['t', 'ʰ'], ['i']].
@@ -7,14 +9,21 @@ def group_phones(symbols):
   for symbol in symbols:
     if ipa_data.is_diacritic(symbol):
       phones[-1].append(symbol)
-    else:
+    elif ipa_data.is_delimiter(symbol):
+      continue
+    elif ipa_data.is_letter(symbol):
       phones.append([symbol])
+    elif symbol.isspace():
+      continue
+    else:
+      formatted_symbol = (symbol, unicodedata.name(symbol))
+      raise LookupError(f'Symbol not in inventory: {formatted_symbol}')
   return phones
 
 # Convert a list of IPA symbols representing a single phone to a dictionary of
 # features and their values.
 def phone_to_features(phone):
-  features = {}
+  features = Phone(phone)
   for symbol in phone:
     features.update(ipa_data.get_features(symbol))
   return features

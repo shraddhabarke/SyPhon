@@ -49,7 +49,6 @@ def infer_change(old, new):
     input_positive = value == '+'
     output_negative = new[feature] == '-'
     output_positive = new[feature] == '+'
-    output_zero = z3.And(z3.Not(output_negative), z3.Not(output_positive))
     vars_to_features[control_negative] = (feature, '-')
     vars_to_features[control_positive] = (feature, '+')
 
@@ -76,9 +75,8 @@ def infer_change(old, new):
 
     solver.add(z3.Implies(control_negative, output_negative))
     solver.add(z3.Implies(control_positive, output_positive))
-    solver.add(z3.Implies(input_negative, z3.Or(output_negative, control_positive, output_zero, *positive_explanations)))
-    solver.add(z3.Implies(input_positive, z3.Or(output_positive, control_negative, output_zero, *negative_explanations)))
-    solver.add(z3.Not(z3.And(control_negative, control_positive)))
+    solver.add(z3.Implies(output_negative, z3.Or(input_negative, control_negative, *negative_explanations)))
+    solver.add(z3.Implies(output_positive, z3.Or(input_positive, control_positive, *positive_explanations)))
 
   for var in negative_features.values():
     solver.add_soft(z3.Not(var))
@@ -136,9 +134,8 @@ def infer_condition(triples_changed):
     unsat_core = solver.unsat_core()
     print('\033[1;31mUnsatisfiable constraints:\033[0;31m') # Set text color to red
     for name in unsat_core:
-      formula, triple, changed = formulas[str(name)]
-      formatted_triple = tuple(ipa_data.FEATURES_TO_SYMBOLS.get(frozenset(features.items()), features) for features in triple)
+      formula, (l, c, r), changed = formulas[str(name)]
       changed_str = 'changed' if changed else "didn't change"
-      print(f'{formatted_triple} {changed_str}')
+      print(f'/{l} . {c} . {r}/ {changed_str}')
     print('\033[0;0m') # Reset text color and add a newline
     return None

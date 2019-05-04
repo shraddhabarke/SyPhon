@@ -38,7 +38,6 @@ def infer_change(data):
 
   changed = [(old, new) for (_, old, _), new in data if old != new]
   changes = [([(old, new)], sat.infer_change(old, new)) for old, new in changed]
-  print([rule for data, rule in changes])
   merged_changes = []
   for change in changes:
     merged = False
@@ -50,7 +49,6 @@ def infer_change(data):
         break
     if not merged:
       merged_changes.append(change)
-  #print([rule for data, rule in merged_changes])
   return merged_changes
 
 def infer_rule(data, change):

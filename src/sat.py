@@ -1,6 +1,6 @@
 from . import ipa_data
 from itertools import product
-import z3
+import z3, unicodedata, sys
 
 IDENT = 0
 def fresh():
@@ -17,10 +17,13 @@ def infer_rule(data):
 
 POSITIONS = ['left', 'center', 'right']
 POSITION_WEIGHTS = {
-  'left': 20000,
-  'center': 10000,
-  'right': 20000
+  'left': 2,
+  'center': 1,
+  'right': 2
 }
+
+LIKELIHOOD_WEIGHT = 1
+SIMPLICITY_WEIGHT = 1000
 
 def to_ident(feature, position):
   return f'|{feature} {position}|'
@@ -102,13 +105,24 @@ def lookup(triple, feature, position):
     return '0'
     
 def infer_condition(triples_changed):
-  solver = z3.Optimize()
-  idents_to_features = {}
-  for feature, position, value in product(ipa_data.FEATURES, POSITIONS, ['+', '-']):
-    ident = z3.Bool(f'{feature} {position} {value}')
-    idents_to_features[str(ident)] = (feature, position, value)
-    weight = POSITION_WEIGHTS[position] + ipa_data.get_weight(feature, value)
-    solver.add_soft(z3.Not(ident), weight = weight)
+  opt = z3.Optimize()
+  solver = z3.Solver()
+
+  for constraint in LIKELIHOOD_CONSTRAINTS | SIMPLICITY_CONSTRAINTS:
+    opt.add(constraint)
+
+  likelihood_objective_fn = 0
+  for cost in LIKELIHOOD_COSTS:
+    likelihood_objective_fn = cost + likelihood_objective_fn
+
+  simplicity_objective_fn = 0
+  for cost in SIMPLICITY_COSTS:
+    simplicity_objective_fn = cost + simplicity_objective_fn
+
+  objective_fn = likelihood_objective_fn * LIKELIHOOD_WEIGHT * len(triples_changed) + simplicity_objective_fn * SIMPLICITY_WEIGHT
+  objective_fn_var = z3.Int('objective fn')
+  opt.add(objective_fn_var == objective_fn)
+  opt.minimize(objective_fn_var)
 
   formulas = {}
   for triple, changed in triples_changed:
@@ -120,17 +134,19 @@ def infer_condition(triples_changed):
     name = fresh()
     assertion = z3.And(*conjunction) == changed
     formulas[name] = (assertion, triple, changed)
+    opt.add(assertion)
     solver.assert_and_track(assertion, name)
 
-  if solver.check() == z3.sat:
+  if opt.check() == z3.sat:
     rule = ({}, {}, {})
-    model = solver.model()
+    model = opt.model()
     for ident in model:
-      if model[ident] and str(ident) not in formulas:
-        feature, position, value = idents_to_features[str(ident)]
+      if str(ident) in IDENTS_TO_FEATURES and model[ident]:
+        feature, position, value = IDENTS_TO_FEATURES[str(ident)]
         rule[POSITIONS.index(position)][feature] = value
     return rule
   else:
+    solver.check()
     unsat_core = solver.unsat_core()
     print('\033[1;31mUnsatisfiable constraints:\033[0;31m') # Set text color to red
     for name in unsat_core:
@@ -139,3 +155,65 @@ def infer_condition(triples_changed):
       print(f'/{l} . {c} . {r}/ {changed_str}')
     print('\033[0;0m') # Reset text color and add a newline
     return None
+
+LIKELIHOOD_COSTS = set()
+LIKELIHOOD_CONSTRAINTS = set()
+
+def calc_likelihood():
+  global LIKELIHOOD_COSTS, LIKELIHOOD_CONSTRAINTS
+  def to_constraint(feature, position, value):
+    plus = z3.Bool(f'{feature} {position} +')
+    minus = z3.Bool(f'{feature} {position} -')
+    if value == '+':
+      return minus
+    elif value == '-':
+      return plus
+    else:
+      return z3.Or(plus, minus)
+
+  for letter, features in ipa_data.LETTERS_TO_FEATURES.items():
+    letter_name = []
+    for char in letter:
+      letter_name.append(unicodedata.name(char))
+
+    for position in POSITIONS:
+      disjunction = set()
+      for feature in ipa_data.FEATURES:
+        disjunction.add(to_constraint(feature, position, features[feature]))
+
+      cost = z3.Int(f'likelihood cost {letter_name} {position}')
+      cost_fn = z3.If(z3.Or(*disjunction), 0, 1)
+      LIKELIHOOD_COSTS.add(cost)
+      LIKELIHOOD_CONSTRAINTS.add(cost == cost_fn)
+
+  LIKELIHOOD_COSTS = frozenset(LIKELIHOOD_COSTS)
+  LIKELIHOOD_CONSTRAINTS = frozenset(LIKELIHOOD_CONSTRAINTS)
+
+SIMPLICITY_COSTS = set()
+SIMPLICITY_CONSTRAINTS = set()
+
+def calc_simplicity():
+  global SIMPLICITY_COSTS, SIMPLICITY_CONSTRAINTS
+  for feature, position, value in product(ipa_data.FEATURES, POSITIONS, ['+', '-']):
+    ident = z3.Bool(f'{feature} {position} {value}')
+    weight = POSITION_WEIGHTS[position]
+    cost = z3.Int(f'simplicity cost {feature} {position} {value}')
+    cost_fn = z3.If(ident, weight, 0)
+    SIMPLICITY_COSTS.add(cost)
+    SIMPLICITY_CONSTRAINTS.add(cost == cost_fn)
+  SIMPLICITY_COSTS = frozenset(SIMPLICITY_COSTS)
+  SIMPLICITY_CONSTRAINTS = frozenset(SIMPLICITY_CONSTRAINTS)
+
+IDENTS_TO_FEATURES = {}
+def calc_idents_to_features():
+  global IDENTS_TO_FEATURES
+  for feature, position, value in product(ipa_data.FEATURES, POSITIONS, ['+', '-']):
+    ident = f'{feature} {position} {value}'
+    IDENTS_TO_FEATURES[ident] = (feature, position, value)
+
+def init():
+  calc_likelihood()
+  calc_simplicity()
+  calc_idents_to_features()
+
+init()

@@ -19,9 +19,9 @@ def handle_infer_rule():
   return jsonify(infer_rule(words))
 
 def format_features(features):
-  symbol = ipa_data.FEATURES_TO_LETTERS.get(frozenset(features.items()))
-  if symbol:
-    return symbol
+  matching_letter = ipa_data.get_matching_letter(features)
+  if matching_letter:
+    return matching_letter
   elif len(features) == 0:
     return None
   else:

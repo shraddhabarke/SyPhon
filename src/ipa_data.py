@@ -13,9 +13,7 @@ IPA_NORMALIZATION = {
 # Map from ipa symbols to feature-dicts and vice-versa. The reverse map is
 # actually a map from sets of tuples, since Python doesn't provide an immutable
 # dict type.
-SYMBOLS_TO_FEATURES = {
-  '#': {'word boundary': '+'}
-}
+SYMBOLS_TO_FEATURES = {}
 FEATURES_TO_SYMBOLS = {
   frozenset({('word boundary', '+')}): '#'
 }
@@ -26,10 +24,11 @@ FEATURES_TO_LETTERS = {
 # Set of feature names.
 FEATURES = {'word boundary'}
 
-# Set of IPA symbols which are diacritics, i.e., modifiers, and letters, i.e.,
-# not modifiers.
+# Set of IPA symbols which are diacritics (modifiers), letters (complete
+# sounds), and delimiters.
 DIACRITICS = set()
 LETTERS = set()
+DELIMITERS = set()
 
 # Map from (feature, value) pairs to the number of sounds they apply to.
 FEATURE_WEIGHTS = Counter()
@@ -77,9 +76,13 @@ def is_symbol(symbol):
 def is_diacritic(symbol):
   return symbol in DIACRITICS
 
-# Returns whether an IPA symbol is a letter, i.e., not a diacritic.
+# Returns whether an IPA symbol is a letter, i.e., it represents a complete sound
 def is_letter(symbol):
-  return symbol not in DIACRITICS
+  return symbol in LETTERS
+
+# Returns whether an IPA symbol is a delimiter (for syllables etc.)
+def is_delimiter(symbol):
+  return symbol in DELIMITERS
 
 # Returns the feature dict of a (non-compound) IPA symbol.
 def get_features(symbol):
@@ -108,7 +111,6 @@ def read_features():
     for row in reader:
       symbol = normalize(row.pop('symbol'))
       symbol_type = row.pop('type')
-      row['word boundary'] = '-'
       features = {k: v for k, v in row.items() if v != ''}
       SYMBOLS_TO_FEATURES[symbol] = features
       FEATURES_TO_SYMBOLS[frozenset(features.items())] = symbol
@@ -117,6 +119,8 @@ def read_features():
       elif symbol_type == 'letter':
         LETTERS.add(symbol)
         FEATURES_TO_LETTERS[frozenset(features.items())] = symbol
+      elif symbol_type == 'delimiter':
+        DELIMITERS.add(symbol)
 
 # Populate FEATURE_WEIGHTS based on features data.
 def calc_weights():

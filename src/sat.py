@@ -1,8 +1,9 @@
 from . import ipa_data
+from itertools import product
 import z3
 
 IDENT = 0
-def get_ident():
+def fresh():
   global IDENT
   IDENT += 1
   return 'formula' + str(IDENT)
@@ -11,10 +12,15 @@ def infer_rule(data):
   triples_changed = []
   for (l, c, r), new_c in data:
     triples_changed.append(((l, c, r), c != new_c))
-  rule = query_z3(triples_changed)
+  rule = infer_condition(triples_changed)
   return rule
 
 POSITIONS = ['left', 'center', 'right']
+POSITION_WEIGHTS = {
+  'left': 20000,
+  'center': 10000,
+  'right': 20000
+}
 
 def to_ident(feature, position):
   return f'|{feature} {position}|'
@@ -33,136 +39,103 @@ def shared_features(triples):
 
 def infer_change(old, new):
   solver = z3.Optimize()
-  included_features = {}
+  negative_features = {}
   positive_features = {}
+  vars_to_features = {}
   for feature, value in old.items():
-    control_included = z3.Bool(f'|{feature} included|')
+    control_negative = z3.Bool(f'|{feature} negative|')
     control_positive = z3.Bool(f'|{feature} positive|')
-    input_included = value != '0'
+    input_negative = value == '-'
     input_positive = value == '+'
-    output_included = new[feature] != '0'
+    output_negative = new[feature] == '-'
     output_positive = new[feature] == '+'
+    vars_to_features[control_negative] = (feature, '-')
+    vars_to_features[control_positive] = (feature, '+')
 
-    included_features[control_included] = feature
+    negative_features[feature] = control_negative
     positive_features[feature] = control_positive
 
     positive_explanations = []
     for implying_feature, implying_value in ipa_data.get_implying(feature, '+'):
-      implying_included = z3.Bool(f'|{implying_feature} included|')
+      implying_negative = z3.Bool(f'|{implying_feature} negative|')
       implying_positive = z3.Bool(f'|{implying_feature} positive|')
       if implying_value == '+':
-        positive_explanations.append(z3.And(implying_included, implying_positive))
-      else:
-        positive_explanations.append(z3.And(implying_included, z3.Not(implying_positive)))
+        positive_explanations.append(implying_positive)
+      elif implying_value == '-':
+        positive_explanations.append(implying_negative)
 
     negative_explanations = []
     for implying_feature, implying_value in ipa_data.get_implying(feature, '-'):
-      implying_included = z3.Bool(f'|{implying_feature} included|')
+      implying_negative = z3.Bool(f'|{implying_feature} negative|')
       implying_positive = z3.Bool(f'|{implying_feature} positive|')
       if implying_value == '+':
-        positive_explanations.append(z3.And(implying_included, implying_positive))
-      else:
-        positive_explanations.append(z3.And(implying_included, z3.Not(implying_positive)))
+        negative_explanations.append(implying_positive)
+      elif implying_value == '-':
+        negative_explanations.append(implying_negative)
 
-    if not output_included:
-      solver.add(z3.Not(control_included))
+    solver.add(z3.Implies(control_negative, output_negative))
+    solver.add(z3.Implies(control_positive, output_positive))
+    solver.add(z3.Implies(output_negative, z3.Or(input_negative, control_negative, *negative_explanations)))
+    solver.add(z3.Implies(output_positive, z3.Or(input_positive, control_positive, *positive_explanations)))
 
-    solver.add(z3.If(
-      z3.And(control_included, input_included),
-      z3.And(output_included == control_included, output_positive == control_positive),
-      z3.Implies(z3.And(input_included, output_included),
-                 z3.Or(output_positive == input_positive,
-                       z3.And(output_positive, z3.Or(*positive_explanations), z3.Not(z3.Or(*negative_explanations))),
-                       z3.And(z3.Not(output_positive), z3.Or(*negative_explanations), z3.Not(z3.Or(*positive_explanations)))))))
+  for var in negative_features.values():
+    solver.add_soft(z3.Not(var))
 
-  for var in included_features.keys():
+  for var in positive_features.values():
     solver.add_soft(z3.Not(var))
 
   if solver.check() == z3.sat:
     rule = {}
     model = solver.model()
-    for ident, feature in included_features.items():
+    for ident, (feature, val) in vars_to_features.items():
       if model[ident]:
-        positive_feature = positive_features[feature]
-        rule[feature] = '+' if model[positive_feature] else '-'
+        rule[feature] = val
     return rule
   else:
     print('unsat')
+
+def lookup(triple, feature, position):
+  phone = triple[POSITIONS.index(position)]
+  if feature in phone:
+    return phone[feature]
+  else:
+    return '0'
     
-    
-def query_z3(triples_changed):
-  shared = shared_features([triple for triple, changed in triples_changed if changed])
-  idents_to_features = {to_ident(feature, position): (feature, position) for feature, position in shared.keys()}
-  
-  opt = z3.Optimize()
-  solver = z3.Solver()
-  solver.set(unsat_core=True)
+def infer_condition(triples_changed):
+  solver = z3.Optimize()
+  idents_to_features = {}
+  for feature, position, value in product(ipa_data.FEATURES, POSITIONS, ['+', '-']):
+    ident = z3.Bool(f'{feature} {position} {value}')
+    idents_to_features[str(ident)] = (feature, position, value)
+    weight = POSITION_WEIGHTS[position] + ipa_data.get_weight(feature, value)
+    solver.add_soft(z3.Not(ident), weight = weight)
+
   formulas = {}
-
-  soft_assertions = []
-  position_weights = {
-    'left': 20000,
-    'center': 10000,
-    'right': 20000
-  }
-  for control_included, (feature, position) in idents_to_features.items():
-    # # We use 10000 so that including new features is much worse than using more specific features.
-    # weight = 10000 + position_weights[position] + ipa_data.get_weight(feature, shared[(feature, position)])
-    opt.add_soft(z3.Not(z3.Bool(control_included)), weight = position_weights[position])
-
-  print(ipa_data.FEATURE_WEIGHTS)
-  for (feature, position), value in shared.items():
-    control_included = z3.Bool(to_ident(feature, position))
-    control_positive = shared[(feature, position)] == '+'
-    input_included = value != '0'
-    input_positive = value == '+'
-    weight = ipa_data.get_weight(feature, value)
-    print((feature, value, position, weight))
-    opt.add_soft(z3.Not(z3.And(control_included, input_included, control_positive == input_positive)), weight = weight)
-
   for triple, changed in triples_changed:
     conjunction = []
-    for i, phone in enumerate(triple):
-      for feature in ipa_data.FEATURES:
-        position = POSITIONS[i]
-        if (feature, position) in shared:
-          control_included = z3.Bool(to_ident(feature, position))
-          control_positive = shared[(feature, position)] == '+'
-          input_included = phone[feature] != '0' if feature in phone else False
-          input_positive = phone[feature] == '+' if feature in phone else False
-          conjunction.append(z3.Implies(control_included, z3.And(input_included, control_positive == input_positive)))
-    formula = z3.And(*conjunction) == changed
-    opt.assert_exprs(formula)
-    name = z3.Bool(get_ident())
-    formulas[name] = (formula, triple, changed)
-    solver.assert_and_track(formula, name)
+    for feature, position, value in product(ipa_data.FEATURES, POSITIONS, ['+', '-']):
+      ident = z3.Bool(f'{feature} {position} {value}')
+      if lookup(triple, feature, position) != value:
+        conjunction.append(z3.Not(ident))
+    name = fresh()
+    assertion = z3.And(*conjunction) == changed
+    formulas[name] = (assertion, triple, changed)
+    solver.assert_and_track(assertion, name)
 
-
-  if opt.check() == z3.sat:
+  if solver.check() == z3.sat:
     rule = ({}, {}, {})
-    model = opt.model()
+    model = solver.model()
     for ident in model:
-      if model[ident]:
-        feature, position = idents_to_features[str(ident)]
-        rule[POSITIONS.index(position)][feature] = shared[(feature, position)]
+      if model[ident] and str(ident) not in formulas:
+        feature, position, value = idents_to_features[str(ident)]
+        rule[POSITIONS.index(position)][feature] = value
     return rule
   else:
-    solver.check()
     unsat_core = solver.unsat_core()
-    print('Unsat core:')
+    print('\033[1;31mUnsatisfiable constraints:\033[0;31m') # Set text color to red
     for name in unsat_core:
-      formula, (l, c, r), changed = formulas[name]
-      print('Formula:')
-      print(formula)
-      print('Left:')
-      print(ipa_data.FEATURES_TO_SYMBOLS.get(frozenset(l.items()), l))
-      print('Center:')
-      print(ipa_data.FEATURES_TO_SYMBOLS.get(frozenset(c.items()), c))
-      print('Right:')
-      print(ipa_data.FEATURES_TO_SYMBOLS.get(frozenset(r.items()), r))
-      print('Changed:')
-      print(changed)
-      print(formulas[name])
-    print('Shared:')
-    print(shared)
+      formula, (l, c, r), changed = formulas[str(name)]
+      changed_str = 'changed' if changed else "didn't change"
+      print(f'/{l} . {c} . {r}/ {changed_str}')
+    print('\033[0;0m') # Reset text color and add a newline
     return None

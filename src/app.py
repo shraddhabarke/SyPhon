@@ -19,9 +19,9 @@ def handle_infer_rule():
   return jsonify(infer_rule(words))
 
 def format_features(features):
-  symbol = ipa_data.FEATURES_TO_LETTERS.get(frozenset(features.items()))
-  if symbol:
-    return symbol
+  matching_letter = ipa_data.get_matching_letter(features)
+  if matching_letter:
+    return matching_letter
   elif len(features) == 0:
     return None
   else:
@@ -34,9 +34,18 @@ def infer_rule(words):
   response = []
   for rule in rules:
     if rule:
-      change, (left, phone, right) = rule
+      change, (left, target, right) = rule
+
+      formatted_target = format_features(target)
+      if isinstance(formatted_target, list):
+        target_without_change = target.copy()
+        for feature in change:
+          target_without_change.pop(feature, None)
+        if len(target_without_change) > 0:
+          formatted_target = format_features(target_without_change)
+
       response.append({
-        'target': format_features(phone),
+        'target': formatted_target,
         'change': format_features(change),
         'context': {
           'left': format_features(left),

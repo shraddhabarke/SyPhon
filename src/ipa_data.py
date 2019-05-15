@@ -14,15 +14,12 @@ IPA_NORMALIZATION = {
 # actually a map from sets of tuples, since Python doesn't provide an immutable
 # dict type.
 SYMBOLS_TO_FEATURES = {}
-FEATURES_TO_SYMBOLS = {
-  frozenset({('word boundary', '+')}): '#'
-}
-FEATURES_TO_LETTERS = {
-  frozenset({('word boundary', '+')}): '#'
-}
+FEATURES_TO_SYMBOLS = {}
+FEATURES_TO_LETTERS = {}
+LETTERS_TO_FEATURES = {}
 
 # Set of feature names.
-FEATURES = {'word boundary'}
+FEATURES = set()
 
 # Set of IPA symbols which are diacritics (modifiers), letters (complete
 # sounds), and delimiters.
@@ -66,6 +63,34 @@ def normalize_combining(transcription):
       if not combined:
         raise ValueError(f'Encountered combining character \u25cc{symbol} with no non-combining character preceding it')
   return combining_normalized
+
+def matches(features, partial_features):
+  for feature, value in partial_features.items():
+    if features[feature] != value:
+      return False
+  return True
+
+# Returns the set of letters which match a feature vector
+def get_matching_letters(features):
+  matching_letters = set()
+  for letter, letter_features in LETTERS_TO_FEATURES.items():
+    if matches(letter_features, features):
+      matching_letters.add(letter)
+  return matching_letters
+
+# Returns the single letter which matches a feature vector, if any
+def get_matching_letter(features):
+  for feature, value in features.items():
+    for diacritic in DIACRITICS:
+      diacritic_features = SYMBOLS_TO_FEATURES[diacritic]
+      if feature in diacritic_features and diacritic_features[feature] == value:
+        return None
+  matching_letters = get_matching_letters(features)
+  if len(matching_letters) == 1:
+    return next(iter(matching_letters))
+  else:
+    return None
+
 
 # Returns whether a string is a valid IPA symbol.
 def is_symbol(symbol):
@@ -118,6 +143,7 @@ def read_features():
         DIACRITICS.add(symbol)
       elif symbol_type == 'letter':
         LETTERS.add(symbol)
+        LETTERS_TO_FEATURES[symbol] = features
         FEATURES_TO_LETTERS[frozenset(features.items())] = symbol
       elif symbol_type == 'delimiter':
         DELIMITERS.add(symbol)

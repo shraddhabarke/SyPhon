@@ -3,7 +3,7 @@ from itertools import product
 from collections import Counter
 
 # The file where IPA data is stored, relative to the project root.
-FEATURES_FILE = 'datasets/riggle.csv'
+FEATURES_FILE = 'riggle.csv'
 
 # Map of IPA symbols to their preferred Unicode character.
 IPA_NORMALIZATION = {

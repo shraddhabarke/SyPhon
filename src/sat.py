@@ -1,4 +1,4 @@
-from . import ipa_data
+import ipa_data
 from itertools import product
 import z3, unicodedata, sys
 

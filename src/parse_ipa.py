@@ -16,7 +16,7 @@ def group_phones(symbols):
     elif symbol.isspace():
       continue
     else:
-      formatted_symbol = (symbol, unicodedata.name(symbol))
+      formatted_symbol = (symbol, [unicodedata.name(char) for char in symbol])
       raise LookupError(f'Symbol not in inventory: {formatted_symbol}')
   return phones
 

@@ -25,31 +25,15 @@ def format_features(features):
   elif len(features) == 0:
     return None
   else:
-    return [{'feature': feature, 'positive': value == '+'} for feature, value in features.items()]
+    return [{'feature': feature, 'value': value} for feature, value in features.items()]
 
 def infer_rule(words):
   data = phonosynth.parse(words)
-  changes = phonosynth.infer_change(data)
-  rules = phonosynth.infer_rule(data, changes)
+  change = phonosynth.infer_change(data)
+  rules = phonosynth.infer_rule(data, change)
   response = []
   for rule in rules:
     if rule:
       change, (left, target, right) = rule
-
-      formatted_target = format_features(target)
-      if isinstance(formatted_target, list):
-        target_without_change = target.copy()
-        for feature in change:
-          target_without_change.pop(feature, None)
-        if len(target_without_change) > 0:
-          formatted_target = format_features(target_without_change)
-
-      response.append({
-        'target': formatted_target,
-        'change': format_features(change),
-        'context': {
-          'left': format_features(left),
-          'right': format_features(right)
-        }
-      })
+      response.append(ipa_data.format_rule(target, {'left': left, 'right': right}, change))
   return response

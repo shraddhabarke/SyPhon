@@ -4,6 +4,9 @@ class Change:
   def __init__(self, change_vsa):
     self.complete_change, self.simplified_change = sat.infer_change(change_vsa)
 
+  def __repr__(self):
+    return repr(self.simplified_change)
+
   def is_contextual(self, feature):
     return self.complete_change[feature] not in {'+', '-', '0'}
 

@@ -49,7 +49,6 @@ function renderRules(rules) {
   rulesElem = $('#rules');
   rulesElem.empty();
   rules
-    .map(renderRule)
     .forEach(rule => {
     $('<li>').text(rule).appendTo(rulesElem);
   });

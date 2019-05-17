@@ -19,28 +19,21 @@ def handle_infer_rule():
   return jsonify(infer_rule(words))
 
 def format_features(features):
-  symbol = ipa_data.FEATURES_TO_LETTERS.get(frozenset(features.items()))
-  if symbol:
-    return symbol
+  matching_letter = ipa_data.get_matching_letter(features)
+  if matching_letter:
+    return matching_letter
   elif len(features) == 0:
     return None
   else:
-    return [{'feature': feature, 'positive': value == '+'} for feature, value in features.items()]
+    return [{'feature': feature, 'value': value} for feature, value in features.items()]
 
 def infer_rule(words):
   data = phonosynth.parse(words)
-  changes = phonosynth.infer_change(data)
-  rules = phonosynth.infer_rule(data, changes)
+  change = phonosynth.infer_change(data)
+  rules = phonosynth.infer_rule(data, change)
   response = []
   for rule in rules:
     if rule:
-      change, (left, phone, right) = rule
-      response.append({
-        'target': format_features(phone),
-        'change': format_features(change),
-        'context': {
-          'left': format_features(left),
-          'right': format_features(right)
-        }
-      })
+      change, (left, target, right) = rule
+      response.append(ipa_data.format_rule(target, {'left': left, 'right': right}, change))
   return response

@@ -9,7 +9,8 @@ FEATURES_FILE = 'datasets/riggle.csv'
 # Map of IPA symbols to their preferred Unicode character.
 IPA_NORMALIZATION = {
   'g': 'ɡ',
-  'ɩ': 'ɪ'
+  'ɩ': 'ɪ',
+  'ɜ': 'ə'
 }
 
 # Map from ipa symbols to feature-dicts and vice-versa. The reverse map is
@@ -235,7 +236,6 @@ def calc_feature_simplicity():
       if fv[feature] == '0':
         zeros += 1
     FEATURE_SIMPLICITY[feature] = math.floor(100 * math.log(zeros + 1))
-  print(FEATURE_SIMPLICITY)
 
 EMPTY_PHONE = None
 

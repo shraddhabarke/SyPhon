@@ -119,56 +119,89 @@ def infer_change(data):
           change_vsas.append(change_vsa)
 
   changes = [change_vsa.to_change() for change_vsa in change_vsas]
-  print(changes)
   return changes
 
 
 def infer_rule(data, changes):
   rules = []
-  for change in changes:
-    solver_data = []
 
-    if change.is_insertion():
-      target = ipa_data.get_empty_phone()
+  while len(changes) > 0:
+    for i, change in enumerate(changes):
+      solver_data = []
 
-      for word in data:
-        word_iter = iter(word)
-        right = next(word_iter)[0]
+      if change.is_insertion():
+        target = ipa_data.get_empty_phone()
 
-        for underlying_phone, surface_phone in word_iter:
-          left = right
-          if underlying_phone['deleted'] == '+':
-            changed = True
-            right = next(word_iter)[0]
-          else:
-            changed = False
+        for word in data:
+          word_iter = iter(word)
+          right = next(word_iter)[0]
+
+          for underlying_phone, surface_phone in word_iter:
+            left = right
+            if underlying_phone['deleted'] == '+':
+              changed = True
+              right = next(word_iter)[0]
+            else:
+              changed = False
+              right = underlying_phone
+            solver_data.append(((left, target, right), changed))
+      else:
+        for word in data:
+          word_iter = iter(word)
+          target = next(word_iter)[0]
+          right, next_surface = next(word_iter)
+
+          for underlying_phone, surface_phone in word_iter:
+            if underlying_phone['deleted'] == '+':
+              continue
+
+            surface = next_surface
+            next_surface = surface_phone
+
+            left = target
+            target = right
             right = underlying_phone
-          solver_data.append(((left, target, right), changed))
+
+            changed_target = change.apply(target, {'left': left, 'right': right})
+
+            if changed_target == surface and changed_target != target:
+              solver_data.append(((left, target, right), True))
+            elif changed_target != surface:
+              solver_data.append(((left, target, right), False))
+
+      inferred_rule = sat.infer_condition(solver_data)
+      if inferred_rule:
+        changes.pop(i)
+        rules.append((change, inferred_rule))
+        break
     else:
-      for word in data:
-        word_iter = iter(word)
-        target = next(word_iter)[0]
-        right, next_surface = next(word_iter)
+      return rules + [None] # should really just be None but don't want to break Shraddha
 
-        for underlying_phone, surface_phone in word_iter:
-          surface = next_surface
-          next_surface = surface_phone
+    change, (left, target, right) = rules[-1]
+    for i, word in enumerate(data):
+      new_word = word.copy()
+      for j, ((lu, ls), (tu, ts), (ru, rs)) in enumerate(triples(word)):
+        matches = True
+        for feature, value in left.items():
+          if value == 'α':
+            if lu[feature] != ru[feature]:
+              matches = False
+          elif lu[feature] != value:
+            matches = False
 
-          left = target
-          target = right
-          right = underlying_phone
+        for feature, value in right.items():
+          if value == 'α':
+            if ru[feature] != lu[feature]:
+              matches = False
+          elif ru[feature] != value:
+            matches = False
 
-          changed_target = change.apply(target, {'left': left, 'right': right})
+        for feature, value in target.items():
+          if tu[feature] != value:
+            matches = False
 
-          if changed_target == surface and changed_target != target:
-            solver_data.append(((left, target, right), True))
-          elif changed_target != surface:
-            solver_data.append(((left, target, right), False))
+        if matches:
+          new_word[j + 1] = (change.apply(tu, {'left': lu, 'right': ru}), ts)
+      data[i] = new_word
 
-    print([(f'{l} {t} {r}', changed) for (l, t, r), changed in solver_data])
-    inferred_rule = sat.infer_condition(solver_data)
-    if inferred_rule:
-      rules.append((change, inferred_rule))
-    else:
-      rules.append(None)
   return rules

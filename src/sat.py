@@ -1,6 +1,6 @@
 import ipa_data
 from itertools import product
-import z3, unicodedata, sys
+import z3, unicodedata, sys, math
 
 IDENT = 0
 def fresh():
@@ -24,10 +24,12 @@ POSITION_WEIGHTS = {
   'center': 1,
   'right': 2
 }
-NONEMPTY_WEIGHT = 100
+FEATURE_PENALTY = 1000
+FEATURE_SIMPLICITY_WEIGHT = 5
+NONEMPTY_PENALTY = 50000
 
-LIKELIHOOD_WEIGHT = 1
-SIMPLICITY_WEIGHT = 1000
+LIKELIHOOD_WEIGHT = 30
+SIMPLICITY_WEIGHT = 1
 
 def to_ident(feature, position):
   return f'|{feature} {position}|'
@@ -92,64 +94,6 @@ def infer_change(change_vsa):
   else:
     print('Change is unsat, this should never happen')
 
-# def infer_change(old, new):
-#   solver = z3.Optimize()
-#   negative_features = {}
-#   positive_features = {}
-#   vars_to_features = {}
-
-#   for feature, value in old.items():
-#     control_negative = z3.Bool(f'|{feature} negative|')
-#     control_positive = z3.Bool(f'|{feature} positive|')
-#     input_negative = value == '-'
-#     input_positive = value == '+'
-#     output_negative = new[feature] == '-'
-#     output_positive = new[feature] == '+'
-#     vars_to_features[control_negative] = (feature, '-')
-#     vars_to_features[control_positive] = (feature, '+')
-
-#     negative_features[feature] = control_negative
-#     positive_features[feature] = control_positive
-
-#     positive_explanations = []
-#     for implying_feature, implying_value in ipa_data.get_implying(feature, '+'):
-#       implying_negative = z3.Bool(f'|{implying_feature} negative|')
-#       implying_positive = z3.Bool(f'|{implying_feature} positive|')
-#       if implying_value == '+':
-#         positive_explanations.append(implying_positive)
-#       elif implying_value == '-':
-#         positive_explanations.append(implying_negative)
-
-#     negative_explanations = []
-#     for implying_feature, implying_value in ipa_data.get_implying(feature, '-'):
-#       implying_negative = z3.Bool(f'|{implying_feature} negative|')
-#       implying_positive = z3.Bool(f'|{implying_feature} positive|')
-#       if implying_value == '+':
-#         negative_explanations.append(implying_positive)
-#       elif implying_value == '-':
-#         negative_explanations.append(implying_negative)
-
-#     solver.add(z3.Implies(control_negative, output_negative))
-#     solver.add(z3.Implies(control_positive, output_positive))
-#     solver.add(z3.Implies(output_negative, z3.Or(input_negative, control_negative, *negative_explanations)))
-#     solver.add(z3.Implies(output_positive, z3.Or(input_positive, control_positive, *positive_explanations)))
-
-#   for var in negative_features.values():
-#     solver.add_soft(z3.Not(var))
-
-#   for var in positive_features.values():
-#     solver.add_soft(z3.Not(var))
-
-#   if solver.check() == z3.sat:
-#     rule = {}
-#     model = solver.model()
-#     for ident, (feature, val) in vars_to_features.items():
-#       if model[ident]:
-#         rule[feature] = val
-#     return rule
-#   else:
-#     print('unsat')
-
 def lookup(triple, feature, position):
   phone = triple[POSITIONS.index(position)]
   if feature in phone:
@@ -177,27 +121,29 @@ def infer_condition(triples_changed):
   for constraint in LIKELIHOOD_CONSTRAINTS | SIMPLICITY_CONSTRAINTS:
     opt.add(constraint)
 
-  likelihood_formula = 0
-  for cost in LIKELIHOOD_COSTS:
-    likelihood_formula = cost + likelihood_formula
-  likelihood = z3.Int('likelihood')
-  opt.add(likelihood == likelihood_formula)
+  log_num_models = z3.Int('log # models')
+  opt.add(log_num_models == LOG_NUM_MODELS)
 
   simplicity_formula = 0
   for cost in SIMPLICITY_COSTS:
     simplicity_formula = cost + simplicity_formula
-  simplicity = z3.Int('simplicity')
-  opt.add(simplicity == simplicity_formula)
+  simplicity_score = z3.Int('simplicity score')
+  opt.add(simplicity_score == simplicity_formula)
 
   n = len(triples_changed)
   n_pos = len([triple for triple, changed in triples_changed if changed])
   n_neg = len([triple for triple, changed in triples_changed if not changed])
 
-  objective_formula = likelihood * LIKELIHOOD_WEIGHT * n + simplicity * SIMPLICITY_WEIGHT
+  simplicity = z3.Int('simplicity')
+  likelihood = z3.Int('likelihood')
+  opt.add(simplicity == simplicity_score * SIMPLICITY_WEIGHT)
+  opt.add(likelihood == log_num_models * LIKELIHOOD_WEIGHT * n_pos)
+
   objective = z3.Int('objective')
-  opt.add(objective == objective_formula)
+  opt.add(objective == simplicity + likelihood)
   opt.minimize(objective)
 
+  alphas = {}
   formulas = {}
   for triple, changed in triples_changed:
     conjunction = []
@@ -205,24 +151,37 @@ def infer_condition(triples_changed):
       ident = z3.Bool(f'{feature} {position} {value}')
       if lookup(triple, feature, position) != value:
         conjunction.append(z3.Not(ident))
+    for feature in ipa_data.FEATURES:
+      alphas[f'alpha left right {feature}'] = (feature, {'left', 'right'})
+      # alphas[f'alpha left center {feature}'] = (feature, {'left', 'center'})
+      # alphas[f'alpha center right {feature}'] = (feature, {'center', 'right'})
+      lval = lookup(triple, feature, 'left')
+      rval = lookup(triple, feature, 'right')
+
+      lr_ident = z3.Bool(f'alpha left right {feature}')
+      if lval != rval or lval == '0' or rval == '0':
+        conjunction.append(z3.Not(lr_ident))
+
+    triple_changed = z3.And(*conjunction)
     name = fresh()
-    assertion = z3.And(*conjunction) == changed
+    assertion = triple_changed == changed
     formulas[name] = (assertion, triple, changed)
     opt.add(assertion)
     solver.assert_and_track(assertion, name)
 
-  # for feature, position, value in product(ipa_data.FEATURES, POSITIONS, ['+', '-']):
-  #   if feature == 'sonorant' and position == 'right' and value == '-':
-  #     opt.add(z3.Bool(f'sonorant right -'))
-  #     solver.assert_and_track(z3.Bool(f'sonorant right -'), f'force hungarian sonorant right -')
+  # deleted_must_have_context_constraint = []
+  # for feature, value in product(ipa_data.FEATURES, ['+', '-']):
+  #   if feature == 'deleted' and value == '+':
+  #     deleted_must_have_context_constraint.append(z3.Bool(f'deleted center +'))
   #   else:
-  #     opt.add(z3.Not(z3.Bool(f'{feature} {position} {value}')))
-  #     solver.assert_and_track(z3.Not(z3.Bool(f'{feature} {position} {value}')), f'force hungarian not {feature} {position} {value}')
+  #     for position in POSITIONS:
+  #       deleted_must_have_context_constraint.append(z3.Not(z3.Bool(f'{feature} {position} {value}')))
+  # opt.add(z3.Not(z3.And(*deleted_must_have_context_constraint)))
+  # solver.assert_and_track(z3.Not(z3.And(*deleted_must_have_context_constraint)), 'deleted must have context')
 
-  #force_assimilation = z3.Or(z3.Bool('voice right +'), z3.Bool('voice right -'))
-  #formulas['assimilation'] = (force_assimilation, ({}, {'voicing': 'assimilation'}, {}), False)
-  #opt.add(force_assimilation)
-  #solver.assert_and_track(force_assimilation, 'assimilation')
+  #opt.add(z3.Bool(f'alpha left right strident'))
+  #solver.assert_and_track(z3.Bool(f'alpha left right s'), 'alrsonorant')
+
   i = 0
   if True:
     i += 1
@@ -235,6 +194,11 @@ def infer_condition(triples_changed):
           feature, position, value = IDENTS_TO_FEATURES[str(ident)]
           rule[POSITIONS.index(position)][feature] = value
           new_model_constraint.append(z3.Bool(str(ident)))
+        elif str(ident) in alphas and model[ident]:
+          feature, positions = alphas[str(ident)]
+          for position in positions:
+            rule[POSITIONS.index(position)][feature] = 'α'
+
       # print(f'#{i}')
       print(f'Rule: {rule}')
       print(f'N: {n}')
@@ -243,10 +207,10 @@ def infer_condition(triples_changed):
       print(f'Simplicity weight: {SIMPLICITY_WEIGHT}')
       print(f'Likelihood weight: {LIKELIHOOD_WEIGHT}')
       print(f'Objective: {model[objective]}')
-      print(f'Simplicity score: {model[simplicity]}')
-      print(f'Simplicity: {model[simplicity].as_long() * SIMPLICITY_WEIGHT}')
-      print(f'Likelihood score: {model[likelihood]}')
-      print(f'Likelihood: {model[likelihood].as_long() * LIKELIHOOD_WEIGHT * n}')
+      print(f'Simplicity score: {model[simplicity_score]}')
+      print(f'Simplicity: {model[simplicity]}')
+      print(f'Log # models: {model[log_num_models]}')
+      print(f'Likelihood: {model[likelihood]}')
       return rule
       opt.add(z3.Not(z3.And(*new_model_constraint)))
     else:
@@ -265,37 +229,53 @@ def infer_condition(triples_changed):
       #return None
   print('')
 
-LIKELIHOOD_COSTS = set()
+LOG_NUM_MODELS = 0
 LIKELIHOOD_CONSTRAINTS = set()
 
 def calc_likelihood():
-  global LIKELIHOOD_COSTS, LIKELIHOOD_CONSTRAINTS
+  global LOG_NUM_MODELS, LIKELIHOOD_CONSTRAINTS
   def to_constraint(feature, position, value):
     plus = z3.Bool(f'{feature} {position} +')
     minus = z3.Bool(f'{feature} {position} -')
+    alpha = z3.Bool(f'alpha left right {feature}')
     if value == '+':
       return minus
     elif value == '-':
       return plus
     else:
-      return z3.Or(plus, minus)
+      if position in {'left', 'right'}:
+        return z3.Or(plus, minus, alpha)
+      else:
+         return z3.Or(plus, minus)
 
+  num_models = [1, 1, 1]
   for letter, features in ipa_data.LETTERS_TO_FEATURES.items():
     letter_name = []
     for char in letter:
       letter_name.append(unicodedata.name(char))
 
-    for position in POSITIONS:
+    for i, position in enumerate(POSITIONS):
       disjunction = set()
       for feature in ipa_data.FEATURES:
         disjunction.add(to_constraint(feature, position, features[feature]))
 
-      cost = z3.Int(f'likelihood cost {letter_name} {position}')
-      cost_fn = z3.If(z3.Or(*disjunction), 0, 1)
-      LIKELIHOOD_COSTS.add(cost)
-      LIKELIHOOD_CONSTRAINTS.add(cost == cost_fn)
+      in_model = z3.Int(f'in model {letter_name} {position}')
+      in_model_fn = z3.If(z3.Or(*disjunction), 0, 1)
+      num_models[i] = in_model + num_models[i]
+      LIKELIHOOD_CONSTRAINTS.add(in_model == in_model_fn)
 
-  LIKELIHOOD_COSTS = frozenset(LIKELIHOOD_COSTS)
+  for i, position in enumerate(POSITIONS):
+    LIKELIHOOD_CONSTRAINTS.add(z3.Int(f'# models {position}') == num_models[i])
+    LIKELIHOOD_CONSTRAINTS.add(z3.Int(f'# models {position}') <= len(ipa_data.LETTERS) + 1)
+
+  for i in range(1, len(ipa_data.LETTERS) + 2):
+    log_i = math.floor(100 * math.log(i))
+    for j, position in enumerate(POSITIONS):
+      LIKELIHOOD_CONSTRAINTS.add(z3.Implies(z3.Int(f'# models {position}') == i, z3.Int(f'log models {position}') == i))
+
+  for i, position in enumerate(POSITIONS):
+    LOG_NUM_MODELS = z3.Int(f'log models {position}') + LOG_NUM_MODELS
+
   LIKELIHOOD_CONSTRAINTS = frozenset(LIKELIHOOD_CONSTRAINTS)
 
 SIMPLICITY_COSTS = set()
@@ -304,17 +284,42 @@ SIMPLICITY_CONSTRAINTS = set()
 def calc_simplicity():
   global SIMPLICITY_COSTS, SIMPLICITY_CONSTRAINTS
 
+  for feature in ipa_data.FEATURES:
+    lr = z3.Bool(f'alpha left right {feature}')
+    cost_lr = z3.Int(f'simplicity cost alpha left right {feature}')
+    # lc = z3.Bool(f'alpha left center {feature}')
+    # cost_lc = z3.Int(f'simplicity cost alpha left center {feature}')
+    # cr = z3.Bool(f'alpha center right {feature}')
+    # cost_cr = z3.Int(f'simplicity cost alpha center right {feature}')
+
+    SIMPLICITY_CONSTRAINTS.add(z3.Implies(lr, z3.Bool('left nonempty')))
+    SIMPLICITY_CONSTRAINTS.add(z3.Implies(lr, z3.Bool('right nonempty')))
+    # SIMPLICITY_CONSTRAINTS.add(z3.Implies(lc, z3.Bool('left nonempty')))
+    # SIMPLICITY_CONSTRAINTS.add(z3.Implies(cr, z3.Bool('right nonempty')))
+
+    weight = 2 * (FEATURE_PENALTY + FEATURE_SIMPLICITY_WEIGHT * ipa_data.FEATURE_SIMPLICITY[feature])
+    cost_fn_lr = z3.If(lr, weight, 0)
+    SIMPLICITY_COSTS.add(cost_lr)
+    SIMPLICITY_CONSTRAINTS.add(cost_lr == cost_fn_lr)
+    # cost_fn_lc = z3.If(lc, weight, 0)
+    # SIMPLICITY_COSTS.add(cost_lc)
+    # SIMPLICITY_CONSTRAINTS.add(cost_lc == cost_fn_lc)
+    # cost_fn_cr = z3.If(cr, weight, 0)
+    # SIMPLICITY_COSTS.add(cost_cr)
+    # SIMPLICITY_CONSTRAINTS.add(cost_cr == cost_fn_cr)
+
   for feature, position, value in product(ipa_data.FEATURES, POSITIONS, ['+', '-']):
     nonempty = z3.Bool(f'{position} nonempty')
     ident = z3.Bool(f'{feature} {position} {value}')
-    weight = POSITION_WEIGHTS[position]
+    weight = POSITION_WEIGHTS[position] * FEATURE_PENALTY + FEATURE_SIMPLICITY_WEIGHT * ipa_data.FEATURE_SIMPLICITY[feature]
     cost = z3.Int(f'simplicity cost {feature} {position} {value}')
     cost_fn = z3.If(ident, weight, 0)
+    #print(f'{value}{feature} {position}: {weight}')
     SIMPLICITY_COSTS.add(cost)
     SIMPLICITY_CONSTRAINTS.add(z3.Implies(ident, nonempty))
     SIMPLICITY_CONSTRAINTS.add(cost == cost_fn)
-  SIMPLICITY_COSTS.add(z3.If(z3.Bool('left nonempty'), NONEMPTY_WEIGHT, 0))
-  SIMPLICITY_COSTS.add(z3.If(z3.Bool('right nonempty'), NONEMPTY_WEIGHT, 0))
+  SIMPLICITY_COSTS.add(z3.If(z3.Bool('left nonempty'), NONEMPTY_PENALTY, 0))
+  SIMPLICITY_COSTS.add(z3.If(z3.Bool('right nonempty'), NONEMPTY_PENALTY, 0))
   SIMPLICITY_COSTS = frozenset(SIMPLICITY_COSTS)
   SIMPLICITY_CONSTRAINTS = frozenset(SIMPLICITY_CONSTRAINTS)
 

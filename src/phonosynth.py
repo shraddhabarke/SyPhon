@@ -11,11 +11,21 @@ def triples(it):
 
 def parse(words):
   data = []
-  for underlying_form, realization in words:
-    underlying_features = parse_ipa.parse('#' + underlying_form + '#')
-    realized_features = parse_ipa.parse(realization)
-    for i, triple in enumerate(triples(underlying_features)):
-      data.append((triple, realized_features[i]))
+  for underlying_form, surface_form in words:
+    underlying_phones = parse_ipa.parse('#' + underlying_form + '#')
+    surface_phones = parse_ipa.parse('#' + surface_form + '#')
+
+    if len(underlying_phones) != len(surface_phones):
+      for phone in underlying_phones:
+        print(f'underlying: {phone}')
+      for phone in surface_phones:
+        print(f'surface: {phone}')
+
+    word = []
+    for underlying_phone, surface_phone in zip(underlying_phones, surface_phones):
+      word.append((underlying_phone, surface_phone))
+   
+    data.append(word)
   return data
 
 def intersect_assimilations(assimilations_1, assimilations_2):
@@ -83,63 +93,115 @@ def merge(change_1, data_1, change_2, data_2):
 
 def infer_change(data):
   change_vsas = []
-  for ((l, old, r), new) in data:
-    if old == new:
-      continue
 
-    context = {
-      'left': l,
-      'right': r
-    }
-    change_vsa = ChangeVsa(old, new, context)
+  for word in data:
+    word_iter = iter(word)
+    target = next(word_iter)[0]
+    right, next_surface = next(word_iter)
 
-    for i, other_change_vsa in enumerate(change_vsas):
-      merged_change_vsa = change_vsa & other_change_vsa
-      if merged_change_vsa:
-        change_vsas[i] = merged_change_vsa
-        break
-    else:
-      change_vsas.append(change_vsa)
-  return [change_vsa.to_change() for change_vsa in change_vsas]
+    for underlying_phone, surface_phone in iter(word):
+      surface = next_surface
+      next_surface = surface_phone
+
+      left = target
+      target = right
+      right = underlying_phone
+
+      if target != surface:
+        change_vsa = ChangeVsa(target, surface, {'left': left, 'right': right})
+
+        for i, other_change_vsa in enumerate(change_vsas):
+          merged_change_vsa = change_vsa & other_change_vsa
+          if merged_change_vsa:
+            change_vsas[i] = merged_change_vsa
+            break
+        else:
+          change_vsas.append(change_vsa)
+
+  changes = [change_vsa.to_change() for change_vsa in change_vsas]
+  return changes
 
 
 def infer_rule(data, changes):
   rules = []
-  for change in changes:
-    subdata = []
-    for (l, c, r), new_c in data:
-      changed_c = change.apply(c, {'left': l, 'right': r})
-      # changed_c = c.copy()
-      # for feature, value in concrete_change.items():
-      #   if value in {'+', '-', '0'}:
-      #     changed_c[feature] = value
-      #   elif value == 'left':
-      #     changed_c[feature] = l[feature]
-      #   elif value == 'right':
-      #     changed_c[feature] = r[feature]
-      #   else:
-      #     print('oh no')
-      # # if (l, c, r) == (context['left'], old, context['right']):
-      # #   print('Triple:')
-      # #   print((l, c, r))
-      # #   print('Old:')
-      # #   print(c)
-      # #   print('Changed:')
-      # #   print(changed_c)
-      # #   print('New:')
-      # #   print(new_c)
-      # #   print('Difference:')
-      # #   for feature, value in changed_c.items():
-      # #     if new_c[feature] != value:
-      # #       print(f'changed {value}{feature} vs. new {new_c[feature]}{feature}')
-      # # Whyyy no positive examples
-      if changed_c == new_c and changed_c != c:
-        subdata.append(((l, c, r), True))
-      elif changed_c != new_c:
-        subdata.append(((l, c, r), False))
-    inferred_rule = sat.infer_condition(subdata)
-    if inferred_rule:
-      rules.append((change, inferred_rule))
+
+  while len(changes) > 0:
+    for i, change in enumerate(changes):
+      solver_data = []
+
+      if change.is_insertion():
+        target = ipa_data.get_empty_phone()
+
+        for word in data:
+          word_iter = iter(word)
+          right = next(word_iter)[0]
+
+          for underlying_phone, surface_phone in word_iter:
+            left = right
+            if underlying_phone['deleted'] == '+':
+              changed = True
+              right = next(word_iter)[0]
+            else:
+              changed = False
+              right = underlying_phone
+            solver_data.append(((left, target, right), changed))
+      else:
+        for word in data:
+          word_iter = iter(word)
+          target = next(word_iter)[0]
+          right, next_surface = next(word_iter)
+
+          for underlying_phone, surface_phone in word_iter:
+            if underlying_phone['deleted'] == '+':
+              continue
+
+            surface = next_surface
+            next_surface = surface_phone
+
+            left = target
+            target = right
+            right = underlying_phone
+
+            changed_target = change.apply(target, {'left': left, 'right': right})
+
+            if changed_target == surface and changed_target != target:
+              solver_data.append(((left, target, right), True))
+            elif changed_target != surface:
+              solver_data.append(((left, target, right), False))
+
+      inferred_rule = sat.infer_condition(solver_data)
+      if inferred_rule:
+        changes.pop(i)
+        rules.append((change, inferred_rule))
+        break
     else:
-      rules.append(None)
+      return rules + [None] # should really just be None but don't want to break Shraddha
+
+    change, (left, target, right) = rules[-1]
+    for i, word in enumerate(data):
+      new_word = word.copy()
+      for j, ((lu, ls), (tu, ts), (ru, rs)) in enumerate(triples(word)):
+        matches = True
+        for feature, value in left.items():
+          if value == 'α':
+            if lu[feature] != ru[feature]:
+              matches = False
+          elif lu[feature] != value:
+            matches = False
+
+        for feature, value in right.items():
+          if value == 'α':
+            if ru[feature] != lu[feature]:
+              matches = False
+          elif ru[feature] != value:
+            matches = False
+
+        for feature, value in target.items():
+          if tu[feature] != value:
+            matches = False
+
+        if matches:
+          new_word[j + 1] = (change.apply(tu, {'left': lu, 'right': ru}), ts)
+      data[i] = new_word
+
   return rules

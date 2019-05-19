@@ -1,13 +1,16 @@
-import csv, unicodedata
+import csv, unicodedata, math
 from itertools import product
 from collections import Counter
+from . import parse_ipa
 
 # The file where IPA data is stored, relative to the project root.
 FEATURES_FILE = 'riggle.csv'
 
 # Map of IPA symbols to their preferred Unicode character.
 IPA_NORMALIZATION = {
-  'g': 'ɡ'
+  'g': 'ɡ',
+  'ɩ': 'ɪ',
+  'ɜ': 'ə'
 }
 
 # Map from ipa symbols to feature-dicts and vice-versa. The reverse map is
@@ -29,6 +32,7 @@ DELIMITERS = set()
 
 # Map from (feature, value) pairs to the number of sounds they apply to.
 FEATURE_WEIGHTS = Counter()
+FEATURE_SIMPLICITY = {}
 
 # Map from (feature, value) pairs to the set of (feature, value) pairs they
 # imply, and vice-versa.
@@ -128,6 +132,7 @@ def get_implied(feature, value):
 def implies(feature1, value1, feature2, value2):
   return (feature2, value2) in get_implied(feature1, value1)
 
+# Deprecated, use Change.apply
 def apply_change(change, phone):
   phone_copy = phone.copy()
   phone_copy.update(change)
@@ -223,11 +228,29 @@ def format_rule(target, context, change):
 
   return f'{format_features(target)} → {format_features(displayed_change)} / {format_features(context["left"])} _ {format_features(context["right"])}'
 
+def calc_feature_simplicity():
+  global FEATURE_SIMPLICITY
+  for feature in FEATURES:
+    zeros = 0
+    for fv in LETTERS_TO_FEATURES.values():
+      if fv[feature] == '0':
+        zeros += 1
+    FEATURE_SIMPLICITY[feature] = math.floor(100 * math.log(zeros + 1))
+
+EMPTY_PHONE = None
+
+def get_empty_phone():
+  global EMPTY_PHONE
+  if not EMPTY_PHONE:
+    EMPTY_PHONE = parse_ipa.parse('∅')[0]
+  return EMPTY_PHONE
+
 # Read feature data in and initialize all data structures.
 def init():
   read_features()
   calc_weights()
   calc_num_phones()
+  calc_feature_simplicity()
   find_implications()
 
 init()

@@ -39,9 +39,7 @@ def generate_alternating_form(data,source,fst,snd):
     return possible_config
 
 configA = generate_alternating_form(data,alt_forms,0,1)
-print(configA)
 configB = generate_alternating_form(data,alt_forms,1,0)
-print(configB)
 wordsA = zip(configA,data)
 wordsB = zip(configB,data)
 
@@ -64,10 +62,10 @@ def num_features(rule):
     return(total_features)
 
 def select_rule(r1,r2):
-    if r1[0] == None:
-        return r2
-    elif r2[0] == None:
-        return r1
+    if not r1 or None in r1:
+        print(r2)
+    elif not r2 or None in r2:
+        print(r1)
     rA = num_rules(r1)
     rB = num_rules(r2)
     print(rA,rB)
@@ -96,8 +94,7 @@ def select_rule(r1,r2):
 if __name__ == "__main__":
     rules1 = get_rules(wordsA)
     rules2 = get_rules(wordsB)
-    print(select_rule(rules1,rules2))
+    select_rule(rules1,rules2)
  
-
 
 

@@ -100,14 +100,15 @@ def get_models(constraint_formula):
     model = []
     s = z3.Solver()
     s.add(constraint_formula)
+    print(s.sexpr())
     if s.check() == z3.sat:
         m = s.model()
         model.append(m)
     return model
 
 def add_cost_constraint(constraints,cost_bound,cost_constraint,column_cost):
-    constraints.append(cost_constraint == cost_bound) 
-    constraints.append(column_cost == 0)
+    constraints.append(cost_constraint == cost_bound)
+    constraints.append(column_cost == 0) 
     models = get_models(constraints)
     constraints.remove(cost_constraint == cost_bound)
     constraints.remove(column_cost == 0)
@@ -196,7 +197,8 @@ if __name__ == "__main__":
     cost_constraints = z3_constraints[1]
     columna_cost = z3_constraints[2]
     columnb_cost = z3_constraints[3]
-    for i in range(20):
+    i = 1
+    for i in range(10):
         modelA = add_cost_constraint(constraints,i,cost_constraints,columna_cost)
         modelB = add_cost_constraint(constraints,i,cost_constraints,columnb_cost)
         ruleB = print_rule(modelB)

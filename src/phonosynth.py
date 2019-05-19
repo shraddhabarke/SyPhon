@@ -1,6 +1,6 @@
 import itertools
-from . import ipa_data, parse_ipa, sat
-from .change import Change, ChangeVsa
+import ipa_data, parse_ipa, sat
+import change
 
 def triples(it):
   left, center = itertools.tee(it)
@@ -108,7 +108,7 @@ def infer_change(data):
       right = underlying_phone
 
       if target != surface:
-        change_vsa = ChangeVsa(target, surface, {'left': left, 'right': right})
+        change_vsa = change.ChangeVsa(target, surface, {'left': left, 'right': right})
 
         for i, other_change_vsa in enumerate(change_vsas):
           merged_change_vsa = change_vsa & other_change_vsa

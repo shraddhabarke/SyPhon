@@ -213,18 +213,18 @@ def infer_condition(triples_changed):
       print(f'Likelihood: {model[likelihood]}')
       return rule
       opt.add(z3.Not(z3.And(*new_model_constraint)))
-    else:
-      solver.check()
-      unsat_core = solver.unsat_core()
-      print('\033[1;31mUnsatisfiable constraints:\033[0;31m') # Set text color to red
-      for name in unsat_core:
-        if str(name) in formulas:
-          formula, (l, c, r), changed = formulas[str(name)]
-          changed_str = 'changed' if changed else "didn't change"
-          print(f'/{l} . {c} . {r}/ {changed_str}')
-        else:
-          print(f'{str(name)}')
-      print('\033[0;0m') # Reset text color and add a newline
+    #else:
+      #solver.check()
+      #unsat_core = solver.unsat_core()
+      #print('\033[1;31mUnsatisfiable constraints:\033[0;31m') # Set text color to red
+      #for name in unsat_core:
+      #  if str(name) in formulas:
+      #    formula, (l, c, r), changed = formulas[str(name)]
+      #    changed_str = 'changed' if changed else "didn't change"
+      #    print(f'/{l} . {c} . {r}/ {changed_str}')
+      #  else:
+      #    print(f'{str(name)}')
+      #print('\033[0;0m') # Reset text color and add a newline
       return None
       #return None
   print('')

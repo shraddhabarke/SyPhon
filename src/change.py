@@ -2,6 +2,7 @@ from . import sat
 
 class Change:
   def __init__(self, change_vsa):
+    self.insertion = change_vsa.insertion
     self.complete_change, self.simplified_change = sat.infer_change(change_vsa)
 
   def __repr__(self):
@@ -9,6 +10,9 @@ class Change:
 
   def is_contextual(self, feature):
     return self.complete_change[feature] not in {'+', '-', '0'}
+
+  def is_insertion(self):
+    return self.insertion
 
   def apply(self, target, context):
     output = target.copy()
@@ -23,9 +27,13 @@ class Change:
 class ChangeVsa:
   def __init__(self, old, new, context):
     self.data = [(old, new, context)]
-   
+
+    insertion = False
     changes = {}
     necessary_features = set()
+
+    if old['deleted'] == '+':
+      insertion = True
 
     for feature, value in new.items():
       if old[feature] != value:
@@ -37,6 +45,7 @@ class ChangeVsa:
           values.add(position)
       changes[feature] = frozenset(values)
 
+    self.insertion = insertion
     self.changes = changes
     self.necessary_features = frozenset(necessary_features)
 
@@ -47,6 +56,9 @@ class ChangeVsa:
     return repr(relevant_changes)
 
   def __and__(self, other):
+    if self.insertion != other.insertion:
+      return None
+
     necessary_features = self.necessary_features | other.necessary_features
     changes = {}
 
@@ -77,6 +89,7 @@ class ChangeVsa:
           assert(old[feature] == new[feature])
 
     change = self.__new__(self.__class__)
+    change.insertion = self.insertion
     change.data = data
     change.changes = changes
     change.necessary_features = necessary_features

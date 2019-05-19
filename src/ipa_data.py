@@ -1,13 +1,15 @@
 import csv, unicodedata, math
 from itertools import product
 from collections import Counter
+from . import parse_ipa
 
 # The file where IPA data is stored, relative to the project root.
 FEATURES_FILE = 'datasets/riggle.csv'
 
 # Map of IPA symbols to their preferred Unicode character.
 IPA_NORMALIZATION = {
-  'g': 'ɡ'
+  'g': 'ɡ',
+  'ɩ': 'ɪ'
 }
 
 # Map from ipa symbols to feature-dicts and vice-versa. The reverse map is
@@ -234,6 +236,14 @@ def calc_feature_simplicity():
         zeros += 1
     FEATURE_SIMPLICITY[feature] = math.floor(100 * math.log(zeros + 1))
   print(FEATURE_SIMPLICITY)
+
+EMPTY_PHONE = None
+
+def get_empty_phone():
+  global EMPTY_PHONE
+  if not EMPTY_PHONE:
+    EMPTY_PHONE = parse_ipa.parse('∅')[0]
+  return EMPTY_PHONE
 
 # Read feature data in and initialize all data structures.
 def init():

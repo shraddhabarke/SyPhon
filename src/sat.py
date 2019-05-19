@@ -94,64 +94,6 @@ def infer_change(change_vsa):
   else:
     print('Change is unsat, this should never happen')
 
-# def infer_change(old, new):
-#   solver = z3.Optimize()
-#   negative_features = {}
-#   positive_features = {}
-#   vars_to_features = {}
-
-#   for feature, value in old.items():
-#     control_negative = z3.Bool(f'|{feature} negative|')
-#     control_positive = z3.Bool(f'|{feature} positive|')
-#     input_negative = value == '-'
-#     input_positive = value == '+'
-#     output_negative = new[feature] == '-'
-#     output_positive = new[feature] == '+'
-#     vars_to_features[control_negative] = (feature, '-')
-#     vars_to_features[control_positive] = (feature, '+')
-
-#     negative_features[feature] = control_negative
-#     positive_features[feature] = control_positive
-
-#     positive_explanations = []
-#     for implying_feature, implying_value in ipa_data.get_implying(feature, '+'):
-#       implying_negative = z3.Bool(f'|{implying_feature} negative|')
-#       implying_positive = z3.Bool(f'|{implying_feature} positive|')
-#       if implying_value == '+':
-#         positive_explanations.append(implying_positive)
-#       elif implying_value == '-':
-#         positive_explanations.append(implying_negative)
-
-#     negative_explanations = []
-#     for implying_feature, implying_value in ipa_data.get_implying(feature, '-'):
-#       implying_negative = z3.Bool(f'|{implying_feature} negative|')
-#       implying_positive = z3.Bool(f'|{implying_feature} positive|')
-#       if implying_value == '+':
-#         negative_explanations.append(implying_positive)
-#       elif implying_value == '-':
-#         negative_explanations.append(implying_negative)
-
-#     solver.add(z3.Implies(control_negative, output_negative))
-#     solver.add(z3.Implies(control_positive, output_positive))
-#     solver.add(z3.Implies(output_negative, z3.Or(input_negative, control_negative, *negative_explanations)))
-#     solver.add(z3.Implies(output_positive, z3.Or(input_positive, control_positive, *positive_explanations)))
-
-#   for var in negative_features.values():
-#     solver.add_soft(z3.Not(var))
-
-#   for var in positive_features.values():
-#     solver.add_soft(z3.Not(var))
-
-#   if solver.check() == z3.sat:
-#     rule = {}
-#     model = solver.model()
-#     for ident, (feature, val) in vars_to_features.items():
-#       if model[ident]:
-#         rule[feature] = val
-#     return rule
-#   else:
-#     print('unsat')
-
 def lookup(triple, feature, position):
   phone = triple[POSITIONS.index(position)]
   if feature in phone:
@@ -201,6 +143,7 @@ def infer_condition(triples_changed):
   opt.add(objective == simplicity + likelihood)
   opt.minimize(objective)
 
+  alphas = {}
   formulas = {}
   for triple, changed in triples_changed:
     conjunction = []
@@ -208,24 +151,37 @@ def infer_condition(triples_changed):
       ident = z3.Bool(f'{feature} {position} {value}')
       if lookup(triple, feature, position) != value:
         conjunction.append(z3.Not(ident))
+    for feature in ipa_data.FEATURES:
+      alphas[f'alpha left right {feature}'] = (feature, {'left', 'right'})
+      # alphas[f'alpha left center {feature}'] = (feature, {'left', 'center'})
+      # alphas[f'alpha center right {feature}'] = (feature, {'center', 'right'})
+      lval = lookup(triple, feature, 'left')
+      rval = lookup(triple, feature, 'right')
+
+      lr_ident = z3.Bool(f'alpha left right {feature}')
+      if lval != rval or lval == '0' or rval == '0':
+        conjunction.append(z3.Not(lr_ident))
+
+    triple_changed = z3.And(*conjunction)
     name = fresh()
-    assertion = z3.And(*conjunction) == changed
+    assertion = triple_changed == changed
     formulas[name] = (assertion, triple, changed)
     opt.add(assertion)
     solver.assert_and_track(assertion, name)
 
-  # for feature, position, value in product(ipa_data.FEATURES, POSITIONS, ['+', '-']):
-  #   if feature == 'sonorant' and position == 'right' and value == '-':
-  #     opt.add(z3.Bool(f'sonorant right -'))
-  #     solver.assert_and_track(z3.Bool(f'sonorant right -'), f'force hungarian sonorant right -')
+  # deleted_must_have_context_constraint = []
+  # for feature, value in product(ipa_data.FEATURES, ['+', '-']):
+  #   if feature == 'deleted' and value == '+':
+  #     deleted_must_have_context_constraint.append(z3.Bool(f'deleted center +'))
   #   else:
-  #     opt.add(z3.Not(z3.Bool(f'{feature} {position} {value}')))
-  #     solver.assert_and_track(z3.Not(z3.Bool(f'{feature} {position} {value}')), f'force hungarian not {feature} {position} {value}')
+  #     for position in POSITIONS:
+  #       deleted_must_have_context_constraint.append(z3.Not(z3.Bool(f'{feature} {position} {value}')))
+  # opt.add(z3.Not(z3.And(*deleted_must_have_context_constraint)))
+  # solver.assert_and_track(z3.Not(z3.And(*deleted_must_have_context_constraint)), 'deleted must have context')
 
-  #force_assimilation = z3.Or(z3.Bool('voice right +'), z3.Bool('voice right -'))
-  #formulas['assimilation'] = (force_assimilation, ({}, {'voicing': 'assimilation'}, {}), False)
-  #opt.add(force_assimilation)
-  #solver.assert_and_track(force_assimilation, 'assimilation')
+  #opt.add(z3.Bool(f'alpha left right strident'))
+  #solver.assert_and_track(z3.Bool(f'alpha left right s'), 'alrsonorant')
+
   i = 0
   if True:
     i += 1
@@ -238,6 +194,11 @@ def infer_condition(triples_changed):
           feature, position, value = IDENTS_TO_FEATURES[str(ident)]
           rule[POSITIONS.index(position)][feature] = value
           new_model_constraint.append(z3.Bool(str(ident)))
+        elif str(ident) in alphas and model[ident]:
+          feature, positions = alphas[str(ident)]
+          for position in positions:
+            rule[POSITIONS.index(position)][feature] = 'α'
+
       # print(f'#{i}')
       print(f'Rule: {rule}')
       print(f'N: {n}')
@@ -276,12 +237,16 @@ def calc_likelihood():
   def to_constraint(feature, position, value):
     plus = z3.Bool(f'{feature} {position} +')
     minus = z3.Bool(f'{feature} {position} -')
+    alpha = z3.Bool(f'alpha left right {feature}')
     if value == '+':
       return minus
     elif value == '-':
       return plus
     else:
-      return z3.Or(plus, minus)
+      if position in {'left', 'right'}:
+        return z3.Or(plus, minus, alpha)
+      else:
+         return z3.Or(plus, minus)
 
   num_models = [1, 1, 1]
   for letter, features in ipa_data.LETTERS_TO_FEATURES.items():
@@ -318,6 +283,30 @@ SIMPLICITY_CONSTRAINTS = set()
 
 def calc_simplicity():
   global SIMPLICITY_COSTS, SIMPLICITY_CONSTRAINTS
+
+  for feature in ipa_data.FEATURES:
+    lr = z3.Bool(f'alpha left right {feature}')
+    cost_lr = z3.Int(f'simplicity cost alpha left right {feature}')
+    # lc = z3.Bool(f'alpha left center {feature}')
+    # cost_lc = z3.Int(f'simplicity cost alpha left center {feature}')
+    # cr = z3.Bool(f'alpha center right {feature}')
+    # cost_cr = z3.Int(f'simplicity cost alpha center right {feature}')
+
+    SIMPLICITY_CONSTRAINTS.add(z3.Implies(lr, z3.Bool('left nonempty')))
+    SIMPLICITY_CONSTRAINTS.add(z3.Implies(lr, z3.Bool('right nonempty')))
+    # SIMPLICITY_CONSTRAINTS.add(z3.Implies(lc, z3.Bool('left nonempty')))
+    # SIMPLICITY_CONSTRAINTS.add(z3.Implies(cr, z3.Bool('right nonempty')))
+
+    weight = 2 * (FEATURE_PENALTY + FEATURE_SIMPLICITY_WEIGHT * ipa_data.FEATURE_SIMPLICITY[feature])
+    cost_fn_lr = z3.If(lr, weight, 0)
+    SIMPLICITY_COSTS.add(cost_lr)
+    SIMPLICITY_CONSTRAINTS.add(cost_lr == cost_fn_lr)
+    # cost_fn_lc = z3.If(lc, weight, 0)
+    # SIMPLICITY_COSTS.add(cost_lc)
+    # SIMPLICITY_CONSTRAINTS.add(cost_lc == cost_fn_lc)
+    # cost_fn_cr = z3.If(cr, weight, 0)
+    # SIMPLICITY_COSTS.add(cost_cr)
+    # SIMPLICITY_CONSTRAINTS.add(cost_cr == cost_fn_cr)
 
   for feature, position, value in product(ipa_data.FEATURES, POSITIONS, ['+', '-']):
     nonempty = z3.Bool(f'{position} nonempty')

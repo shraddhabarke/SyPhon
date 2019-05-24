@@ -1,6 +1,8 @@
 import itertools
-from . import ipa_data, parse_ipa, sat
-from .change import Change, ChangeVsa
+from phonosynthesis import ipa_data
+from phonosynthesis import parse_ipa
+from phonosynthesis import sat
+from phonosynthesis.change import Change, ChangeVsa
 
 def triples(it):
   left, center = itertools.tee(it)

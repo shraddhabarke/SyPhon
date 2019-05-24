@@ -1,4 +1,4 @@
-from . import sat
+from phonosynthesis import sat
 
 class Change:
   def __init__(self, change_vsa):

@@ -1,6 +1,6 @@
 import unicodedata
-from . import ipa_data
-from .phone import Phone
+from phonosynthesis import ipa_data
+from phonosynthesis.phone import Phone
 
 # Convert a list of IPA symbols to a list of lists of symbols, representing the
 # individual phones. E.g. ['t', 'ʰ', 'i'] becomes [['t', 'ʰ'], ['i']].

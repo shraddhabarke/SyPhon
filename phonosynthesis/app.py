@@ -1,5 +1,6 @@
 from flask import Flask, abort, jsonify, request, render_template
-from . import ipa_data, phonosynth
+from phonosynthesis import ipa_data
+from phonosynthesis import phonosynth
 
 app = Flask(__name__, static_url_path='')
 

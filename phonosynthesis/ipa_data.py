@@ -1,7 +1,7 @@
 import csv, unicodedata, math
 from itertools import product
 from collections import Counter
-from . import parse_ipa
+from phonosynthesis import parse_ipa
 
 # The file where IPA data is stored, relative to the project root.
 FEATURES_FILE = 'datasets/riggle.csv'

@@ -1,5 +1,6 @@
 import csv, z3, sys, argparse
-import phonosynth, ipa_data
+from phonosynthesis import phonosynth
+from phonosynthesis import ipa_data
 data = []
 alt_forms = []
 

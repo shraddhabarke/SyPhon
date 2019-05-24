@@ -1,2 +1,2 @@
-FLASK_APP=src/app.py
+FLASK_APP=phonosynthesis.app
 FLASK_ENV=development

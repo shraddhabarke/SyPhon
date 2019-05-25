@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import csv, z3, sys, argparse
 from phonosynthesis import phonosynth
 from phonosynthesis import ipa_data

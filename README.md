@@ -7,10 +7,12 @@ assignment which is equivalent to inferring the phonological rule.
 
 ## Installation
 
-We recommend installing all dependencies (including Z3) in a [Python
+We recommend installing all dependencies (including z3) in a [Python
 virtual environment](https://virtualenv.readthedocs.io/en/latest/).
 
-### Install Z3
+This project requires Python 3.6 or later.
+
+### Install z3
 
 ``` shellsession
 $ git clone https://github.com/Z3Prover/z3.git

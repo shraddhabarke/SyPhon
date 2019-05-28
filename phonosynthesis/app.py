@@ -3,6 +3,7 @@ from phonosynthesis import ipa_data
 from phonosynthesis import phonosynth
 
 app = Flask(__name__, static_url_path='')
+app.config.from_envvar('PHONOSYNTHESIS_CONFIG')
 
 @app.route('/')
 def handle_homepage():

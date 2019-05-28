@@ -10,6 +10,9 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}">
 
 <body class="grid-container">
+  {% if config['ENV'] == 'development' %}
+    <p class="app-alert">Development
+  {% endif %}
   <h1>Phonosynth Demo</h1>
   <ul id="rules" class="callout">
     <li>Upload a file and infer a rule
@@ -36,4 +39,4 @@
   <script>
     $(document).foundation();
   </script>
-  <script src="js/app.js"></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>

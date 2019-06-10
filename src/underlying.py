@@ -58,13 +58,13 @@ def generate_constraints(data):
     cost_constraint = 0
     column_costa = 0
     column_costb = 0
+    length_c = 0
     constraints = []
     for example in data:
-        sufA = z3.String('sufA')
-        sufB = z3.String('sufB')
         preA = z3.String('preA')
         preB = z3.String('preB')
-
+        sufA = z3.String('sufA')
+        sufB = z3.String('sufB')
         stem = z3.String('stem' + str(count))
         
         unchA1 = z3.String('unch' + str(count) + 'A') 
@@ -81,15 +81,19 @@ def generate_constraints(data):
 
         scA = z3.Int('sc'+str(count)+'A')
         scB = z3.Int('sc'+str(count)+'B')
-
+        lc = z3.Int('l'+str(count))
         constraints.append(z3.Length(varA) <= 1)
         constraints.append(z3.Length(varB) <= 1)
         constraints.append(z3.Concat(preA,stem,sufA) == z3.Concat(unchA1,chA,unchA2))
         constraints.append(z3.Concat(preB,stem,sufB) == z3.Concat(unchB1,chB,unchB2))
         constraints.append(z3.StringVal(convert_ipa(example[0],m)) == z3.Concat(unchA1,varA,unchA2))
         constraints.append(z3.StringVal(convert_ipa(example[1],m)) == z3.Concat(unchB1,varB,unchB2))
+        constraints.append(z3.Length(stem) == lc)
         constraints.append(z3.If(chA == varA,0,1) == scA)
         constraints.append(z3.If(chB == varB,0,1) == scB)
+        length_c = length_c + lc
+        constraints.append(scA <= 1)
+        constraints.append(scB <= 1)
         cost_constraint = cost_constraint + scA + scB 
         column_costa = column_costa + scA
         column_costb = column_costb + scB 
@@ -129,10 +133,13 @@ def insert_or_delete(u,s,letter):
         i = 0
         while (i != changed_index[0] and i < len(u)):
             nu += u[i]
+            print(nu)
             i = i + 1
         nu += letter
-        for i in range(changed_index[0]+1,len(u)):
+        print(nu)
+        for i in range(changed_index[0],len(u)):
             nu += u[i]
+            print(nu)
     return nu
 
 def create_word(data,model):
@@ -149,13 +156,13 @@ def create_word(data,model):
         nsA = ""
         nsB = ""
         if len(sA) < len(urA) and not(any(elem in diacritics for elem in sA)) and not(any(elem in diacritics for elem in urA)):
-            nsA = insert_or_delete(sA,urA,'D')
+            nsA = insert_or_delete(sA,urA,'∅')
         if len(sB) < len(urB) and not(any(elem in diacritics for elem in sB)) and not(any(elem in diacritics for elem in urB)):
-            nsB = insert_or_delete(sB,urB,'D')
+            nsB = insert_or_delete(sB,urB,'∅')
         if len(sA) > len(urA) and not(any(elem in diacritics for elem in sA)) and not(any(elem in diacritics for elem in urA)):
-            nurA = insert_or_delete(urA,sA,'I')
+            nurA = insert_or_delete(urA,sA,'∅')
         if len(sB) > len(urB) and not(any(elem in diacritics for elem in sB)) and not(any(elem in diacritics for elem in urB)):
-            nurB = insert_or_delete(urB,sB,'I')
+            nurB = insert_or_delete(urB,sB,'∅')
 
         if nsA != "":
             output_data.append(nsA)
@@ -197,13 +204,14 @@ if __name__ == "__main__":
     cost_constraints = z3_constraints[1]
     columna_cost = z3_constraints[2]
     columnb_cost = z3_constraints[3]
-    i = 1
-    for i in range(10):
-        modelA = add_cost_constraint(constraints,i,cost_constraints,columna_cost)
+    for i in range(4,20):
         modelB = add_cost_constraint(constraints,i,cost_constraints,columnb_cost)
         ruleB = print_rule(modelB)
+        print(ruleB)
         if ruleB:
             break
+        modelA = add_cost_constraint(constraints,i,cost_constraints,columna_cost)
         ruleA = print_rule(modelA)
+        print(ruleA)
         if ruleA:
             break

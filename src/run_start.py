@@ -97,9 +97,17 @@ def run_altbenchmark(name,filename):
         print(["{0:0.2f}".format(end - start)])
         return format(["{0:0.2f}".format(end - start)])
 
+def run_supbench(name,filename):
+    with open('SYPHON_LOG', 'w+') as syphon_log:
+        start = time.time()
+        call(['python',filename, name + '.csv'], stdout=syphon_log, stderr=syphon_log)
+        end = time.time()   
+        print(["{0:0.2f}".format(end - start)])
+        return format(["{0:0.2f}".format(end - start)])
+
 def write_csv():
     '''Generate CSV file from the results dictionary'''
-    benchmarks = ALT_BENCHMARKS 
+    benchmarks = ALT_BENCHMARKS +UF_BENCHMARKS + UF4_BENCHMARKS + SUP_BENCHMARKS
     with open(CSV_FILE, 'w') as outfile:
         for b in benchmarks:
                 outfile.write (b.name + ',')
@@ -123,7 +131,7 @@ if __name__ == '__main__':
         b.rule = open('SYPHON_LOG', "r").readlines()[-1]
     supbenchs = SUP_BENCHMARKS
     for b in supbenchs:
-        b.time = run_altbenchmark(b.name,'supervised.py')
+        b.time = run_supbench(b.name,'supervised.py')
         b.rule = open('SYPHON_LOG', "r").readlines()[-1]
     write_csv()
 

@@ -188,7 +188,7 @@ if __name__ == "__main__":
     constraints = z3_constraints[0]
     cost_constraints = z3_constraints[1]
 
-    for i in range(8,20):
+    for i in range(6,20):
         models = add_cost_constraint(constraints,i,cost_constraints)
         rule = print_rule(models)
         if rule:

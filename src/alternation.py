@@ -19,12 +19,9 @@ with open(fname) as rf:
     reader = csv.reader(rf)
     for row in reader:
         if row[0] != "U":
-            print(row)
             data.append(''.join(row))
         elif row[0] == "U":
-            print(row)
             alt_forms.append((row[1],row[2]))
-            print(alt_forms)
 
 def generate_alternating_form(data,source,fst,snd):
     possible_config = []
@@ -54,7 +51,7 @@ def num_rules(rules):
 
 def num_features(rule):
     num_condition = 0
-    num_change = len(rule[0].keys())
+    num_change = len(rule[0].simplified_change.keys())
     for dictionary in rule[1]:
         count = len(dictionary.keys()) 
         num_condition += count
@@ -62,7 +59,6 @@ def num_features(rule):
     return(total_features)
 
 def select_rule(r1,r2):
-    print(r1,r2)
     if not r1:
         return r2
     if None in r1:
@@ -73,17 +69,17 @@ def select_rule(r1,r2):
         return r1
     rA = num_rules(r1)
     rB = num_rules(r2)
-    print(rA,rB)
     if rA > rB:
         return r2
     elif rA < rB:
         return r1
     elif rA == 1 and rB == 1:
-        print(r1,r2)
         if num_features(r1[0]) > num_features(r2[0]):
             return r2[0]
         elif num_features(r1[0]) < num_features(r2[0]):
             return r1[0]
+        else:
+            return r2[0]
     else:
         fA = 0
         fB = 0

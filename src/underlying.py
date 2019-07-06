@@ -16,25 +16,40 @@ fname = parsed_args.inputDirectory
 data=[]
 
 m = {'ø':'A', 'ʃ':'B', 'ɯ':'C', 'ʤ':'D', 'ʧ': 'E', 'ː':'F', 'ɛ':'G', 'ə':'H', 'ɑ': 'I', 'œ':'J', 'ŋ': 'K', 'ʋ':'L', 'ʌ':'M', 'ʊ':'N', 'ʦ':'P', 'æ':'Q', 'ʣ':'R', 'ʈ':'S', 'ɖ':'T', 'ʒ':'U', 'ɱ':'V', 'ɩ':'W'}
-diacritics = ['ʻ','ʰ']
+diacritics = ['ʻ','ʰ','ʲ']
 
 def convert_ipa(ipa_string,dictionary):
     nipa_string = []
-    ipa_string = ipa_string.replace('kʻ','1')
-    ipa_string = ipa_string.replace('pʰ','2')
-    ipa_string = ipa_string.replace('tʰ','3')
+    # ipa_string = ipa_string.replace('kʻ','1')
+    # ipa_string = ipa_string.replace('pʰ','2')
+    # ipa_string = ipa_string.replace('tʰ','3')
+    
     for ipa in ipa_string:
-        if ipa in dictionary.keys():
+        if ipa in diacritics:
+            new_key = get_key(dictionary, nipa_string[-1]) + ipa
+            if new_key in dictionary:
+                nipa_string[-1] = dictionary[new_key]
+            else:
+                dictionary[new_key] = get_unused_symbol(dictionary)
+                nipa_string[-1] = dictionary[new_key]
+        elif ipa in dictionary.keys():
             nipa_string.append(dictionary[ipa])
         else:
             nipa_string.append(ipa)
+    print(ipa_string," > ",nipa_string,dictionary)
     return ''.join(map(str, nipa_string))
+
+def get_unused_symbol(d):
+    possibilities = [chr(n) for n in range(ord('A'),ord('Z')+1)] + [int(n) for n in range(1,10) ]
+    for p in possibilities:
+        if p not in d.values(): return p
+    assert False, "dictionary could not be made bigger"
 
 def convert_str(string,dictionary):
     nstring = []
-    string = string.replace('1','kʻ')
-    string = string.replace('2','pʰ')
-    string = string.replace('3','tʰ')
+    # string = string.replace('1','kʻ')
+    # string = string.replace('2','pʰ')
+    # string = string.replace('3','tʰ')
 
     for s in string:
         key = get_key(dictionary,s)
@@ -190,7 +205,6 @@ def create_word(data,model):
 def print_rule(models):
     for model in models:
             words = create_word(data,model)
-            print(words)
             rules = get_rules(words)   
             if(None in rules):
                 continue
@@ -206,6 +220,7 @@ if __name__ == "__main__":
     columnb_cost = z3_constraints[3]
     for i in range(4,20):
         modelB = add_cost_constraint(constraints,i,cost_constraints,columnb_cost)
+        print("model",modelB)
         ruleB = print_rule(modelB)
         print(ruleB)
         if ruleB:

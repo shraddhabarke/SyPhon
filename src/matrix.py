@@ -15,11 +15,15 @@ fname = parsed_args.inputDirectory
 
 data=[]
 
-m = {'ʧ':'D','ø':'A', 'ʃ':'B', 'ɯ':'C', 'ʤ':'E', 'ː':'F', 'ɛ':'G', 'ə':'H', 'œ':'J', 'ŋ': 'K', 'ʋ':'L', 'ʌ':'M', 'ɑ': 'I', 'ʒ': 'N', 'ʦ':'R', 'ü':'P', 'ɲ':'Q', 'ʣ':'S'}
+m = {'ø':'A', 'ʃ':'B', 'ɯ':'C', 'ʤ':'D', 'ʧ': 'E', 'ː':'F', 'ɛ':'G', 'ə':'H', 'ɑ': 'I', 'œ':'J', 'ŋ': 'K', 'ʋ':'L', 'ʌ':'M', 'ʊ':'N', 'ʦ':'P', 'æ':'Q', 'ʣ':'R', 'ʈ':'S', 'ɖ':'T', 'ʒ':'U', 'ɱ':'V', 'ɩ':'W', 'ɲ': 'Y'}
 diacritics = ['ʻ','ʰ','ʲ']
 
 def convert_ipa(ipa_string,dictionary):
     nipa_string = []
+    # ipa_string = ipa_string.replace('kʻ','1')
+    # ipa_string = ipa_string.replace('pʰ','2')
+    # ipa_string = ipa_string.replace('tʰ','3')
+    
     for ipa in ipa_string:
         if ipa in diacritics:
             new_key = get_key(dictionary, nipa_string[-1]) + ipa
@@ -32,6 +36,7 @@ def convert_ipa(ipa_string,dictionary):
             nipa_string.append(dictionary[ipa])
         else:
             nipa_string.append(ipa)
+    print(ipa_string," > ",nipa_string,dictionary)
     return ''.join(map(str, nipa_string))
 
 def get_unused_symbol(d):
@@ -42,6 +47,9 @@ def get_unused_symbol(d):
 
 def convert_str(string,dictionary):
     nstring = []
+    # string = string.replace('1','kʻ')
+    # string = string.replace('2','pʰ')
+    # string = string.replace('3','tʰ')
 
     for s in string:
         key = get_key(dictionary,s)
@@ -58,63 +66,88 @@ with open(fname) as rf:
     reader = csv.reader(rf)
     for row in reader:
         data.append(row)
-print("Data from CSV:",data)
+print(data)
 
 def generate_constraints(data):
-    inflections = len(data[0])
+    I = len(data[0]) # number of inflections
+    
     count = 0
     cost_constraint = 0
-    cc = [0]*inflections
-
+    column_cost = [0]*I
+    length_c = 0
     constraints = []
     for example in data:
         suffixes = [z3.String('suf' + chr(ord('A') + i))
-                    for i in range(inflections) ]
+                    for i in range(I) ]
         prefixes = [z3.String('pre' + chr(ord('A') + i))
-                    for i in range(inflections) ]
+                    for i in range(I) ]
+        # preA = z3.String('preA')
+        # preB = z3.String('preB')
+        # sufA = z3.String('sufA')
+        # sufB = z3.String('sufB')
+        stem = z3.String('stem' + str(count))
 
-        stemA = z3.String('stem' + str(count) + 'A')
-        stemB = z3.String('stem' + str(count) + 'B')
+        # 1 is associated with the prefix
+        unch1 = [z3.String('unch1' + str(count) + chr(ord('A') + i))
+                 for i in range(I) ]
+        # 2 is associated with the suffix
+        unch2 = [z3.String('unch2' + str(count) + chr(ord('A') + i))
+                 for i in range(I) ]
 
-        variables = [z3.String('var' + str(count) + chr(ord('A') + i))
-                    for i in range(inflections) ]
+        # unchA1 = z3.String('unch' + str(count) + 'A') 
+        # unchA2 = z3.String('unch' + str(count) + 'B')
 
-        pvariables = [z3.String('pvar' + str(count) + chr(ord('A') + i))
-                     for i in range(inflections) ]
-        
-        pstemB = z3.String('pstem' + str(count) + 'B')
+        # unchB1 = z3.String('unch' + str(count) + 'C')
+        # unchB2 = z3.String('unch' + str(count) + 'D')
 
+        ch = [z3.String('ch' + str(count) + chr(ord('A') + i))
+              for i in range(I) ]
+
+        var = [z3.String('var' + str(count) + chr(ord('A') + i))
+              for i in range(I) ]
+        # varA = z3.String('var' + str(count) + 'A')
+        # varB = z3.String('var' + str(count) + 'B')
+
+        # scA = z3.Int('sc'+str(count)+'A')
+        # scB = z3.Int('sc'+str(count)+'B')
         sc = [z3.Int('sc' + str(count) + chr(ord('A') + i))
-              for i in range(inflections) ]
-
-        pc = [z3.Int('pc' + str(count) + chr(ord('A') + i))
-              for i in range(inflections) ]
-
-        for v in variables:
+              for i in range(I) ]
+        
+        lc = z3.Int('l'+str(count))
+        for v in var:
             constraints.append(z3.Length(v) <= 1)
-        for v in pvariables:
-            constraints.append(z3.Length(v) <= 1)
-        for i in range(inflections):
-            if len(example[i]) > 0:
-                constraints.append(z3.StringVal(convert_ipa(example[i],m)) == z3.Concat(prefixes[i], pvariables[i], stemA, variables[i], suffixes[i]))
+        # constraints.append(z3.Length(varA) <= 1)
+        # constraints.append(z3.Length(varB) <= 1)
+        for i in range(I):
+            constraints.append(z3.Concat(prefixes[i],stem,suffixes[i]) == z3.Concat(unch1[i],ch[i],unch2[i]))
+        # constraints.append(z3.Concat(preA,stem,sufA) == z3.Concat(unchA1,chA,unchA2))
+        # constraints.append(z3.Concat(preB,stem,sufB) == z3.Concat(unchB1,chB,unchB2))
+        for i in range(I):
+            if len(example[i]) == 0: continue
+            constraints.append(z3.StringVal(convert_ipa(example[i],m)) == z3.Concat(unch1[i],var[i],unch2[i]))
             
-        for v in variables:
-            constraints.append(z3.Length(stemB) == z3.Length(v))
+        # constraints.append(z3.StringVal(convert_ipa(example[0],m)) == z3.Concat(unchA1,varA,unchA2))
+        # constraints.append(z3.StringVal(convert_ipa(example[1],m)) == z3.Concat(unchB1,varB,unchB2))
+        
+        constraints.append(z3.Length(stem) == lc)
 
-        for v in pvariables:
-            constraints.append(z3.Length(pstemB) == z3.Length(v))
+        for i in range(I):
+            constraints.append(z3.If(ch[i] == var[i],0,1) == sc[i])
+            
+        #constraints.append(z3.If(chB == varB,0,1) == scB)
+        
+        length_c = length_c + lc
 
-        for i in range(inflections):
-            constraints.append(z3.If(stemB == variables[i],0,1) == sc[i])
-
-        for i in range(inflections):
-            constraints.append(z3.If(pstemB == pvariables[i],0,1) == pc[i])
-
-        for cost_variable in sc + pc:
-            cost_constraint = cost_constraint + cost_variable
-
+        for i in range(I):
+            constraints.append(sc[i] <= 1)
+        # constraints.append(scA <= 1)
+        # constraints.append(scB <= 1)
+        cost_constraint = cost_constraint + sum(sc)
+        for i in range(I):
+            column_cost[i] = column_cost[i] + sc[i]
+        # column_costb = column_costb + scB 
         count += 1
-    return constraints, cost_constraint
+    return constraints, cost_constraint, column_cost
 
 def get_models(constraint_formula):
     model = []
@@ -124,12 +157,16 @@ def get_models(constraint_formula):
     if s.check() == z3.sat:
         m = s.model()
         model.append(m)
-    return model 
+    return model
 
-def add_cost_constraint(constraints,cost_bound,cost_constraint):
-    constraints.append(cost_constraint == cost_bound) 
+def add_cost_constraint(constraints,cost_bound,cost_constraint,column_cost):
+    constraints.append(cost_constraint == cost_bound)
+    if column_cost is not None:
+        constraints.append(column_cost == 0) 
     models = get_models(constraints)
     constraints.remove(cost_constraint == cost_bound)
+    if column_cost is not None:
+        constraints.remove(column_cost == 0)
     return models
 
 def get_rules(words):
@@ -138,31 +175,92 @@ def get_rules(words):
     rules = phonosynth.infer_rule(data, changes)
     return rules
 
+def insert_or_delete(u,s,letter):
+    nu = ""
+    changed_index = [i for i in range(len(u)) if s[i] != u[i]]
+    if len(changed_index) == 0:
+        nu = u + letter
+    else:
+        i = 0
+        while (i != changed_index[0] and i < len(u)):
+            nu += u[i]
+            print(nu)
+            i = i + 1
+        nu += letter
+        print(nu)
+        for i in range(changed_index[0],len(u)):
+            nu += u[i]
+            print(nu)
+    return nu
+
 def create_word(data,model):
-    count = 0
     input_data = []
     output_data = []
-    numberOfInflections = len(data[0])
-    for i in range(len(data)):
-        for inflectionIndex,observation in enumerate(data[i]):
-            if len(observation) == 0: continue
-
-            inflectionCode = chr(ord('A') + inflectionIndex)
-            surface = convert_str(str(model[z3.String('pre' + inflectionCode)]),m) + \
-                      convert_str(str(model[z3.String('pvar' + str(count) + inflectionCode)]),m) + \
-                      convert_str(str(model[z3.String('stem' + str(count) + 'A')]),m) + \
-                      convert_str(str(model[z3.String('var' + str(count) + inflectionCode)]),m) + \
-                      convert_str(str(model[z3.String('suf' + inflectionCode)]),m)
-            underlying = convert_str(str(model[z3.String('pre' + inflectionCode)]),m) + \
-                         convert_str(str(model[z3.String('pstem' + str(count) + 'B')]),m) + \
-                         convert_str(str(model[z3.String('stem' + str(count) + 'A')]),m) + \
-                         convert_str(str(model[z3.String('stem' + str(count) + 'B')]),m) + \
-                         convert_str(str(model[z3.String('suf' + inflectionCode)]),m)
-            output_data.append(surface)
-            input_data.append(underlying)
+    I = len(data[0])
+    for count in range(len(data)):
+        surface = [convert_str(str(model[z3.String('unch1' + str(count) + chr(ord('A') + i))]),m) + \
+                   convert_str(str(model[z3.String('var' + str(count) + chr(ord('A') + i))]),m) + \
+                   convert_str(str(model[z3.String('unch2' + str(count) + chr(ord('A') + i))]),m)
+                   for i in range(I) ]
+        underlying = [convert_str(str(model[z3.String('unch1' + str(count) + chr(ord('A') + i))]),m) + \
+                      convert_str(str(model[z3.String('ch' + str(count) + chr(ord('A') + i))]),m) + \
+                      convert_str(str(model[z3.String('unch2' + str(count) + chr(ord('A') + i))]),m)
+                      for i in range(I) ]
         
+        # nurA = ""
+        # nurB = ""
+        # nsA = ""
+        # nsB = ""
+        nur = [""]*I
+        ns = [""]*I
+        for i in range(I):
+            if len(surface[i]) < len(underlying[i]) and not(any(elem in diacritics for elem in surface[i])) and not(any(elem in diacritics for elem in underlying[i])):
+                ns[i] = insert_or_delete(surface[i],underlying[i],'∅')
+            
+        # if len(sA) < len(urA) and not(any(elem in diacritics for elem in sA)) and not(any(elem in diacritics for elem in urA)):
+        #     nsA = insert_or_delete(sA,urA,'∅')
+        # if len(sB) < len(urB) and not(any(elem in diacritics for elem in sB)) and not(any(elem in diacritics for elem in urB)):
+        #     nsB = insert_or_delete(sB,urB,'∅')
 
-        count += 1
+        for i in range(I):
+            if len(surface[i]) > len(underlying[i]) and not(any(elem in diacritics for elem in surface[i])) and not(any(elem in diacritics for elem in underlying[i])):
+                nur[i] = insert_or_delete(underlying[i],surface[i],'∅')
+        # if len(sA) > len(urA) and not(any(elem in diacritics for elem in sA)) and not(any(elem in diacritics for elem in urA)):
+        #     nurA = insert_or_delete(urA,sA,'∅')
+        # if len(sB) > len(urB) and not(any(elem in diacritics for elem in sB)) and not(any(elem in diacritics for elem in urB)):
+        #     nurB = insert_or_delete(urB,sB,'∅')
+
+        for i in range(I):
+            if ns[i] != "":
+                output_data.append(ns[i])
+            else:
+                output_data.append(surface[i])
+
+        # if nsA != "":
+        #     output_data.append(nsA)
+        # else:
+        #     output_data.append(sA)
+
+        # if nsB != "":
+        #     output_data.append(nsB)
+        # else:
+        #     output_data.append(sB)
+
+        for i in range(I):
+            if nur[i] != "":
+                input_data.append(nur[i])
+            else:
+                input_data.append(underlying[i])
+
+        # if nurA != "":
+        #     input_data.append(nurA)
+        # else:
+        #     input_data.append(urA)
+
+        # if nurB != "":
+        #     input_data.append(nurB)
+        # else:
+        #     input_data.append(urB)
     words = list(zip(input_data,output_data))
     return words
 
@@ -181,10 +279,17 @@ if __name__ == "__main__":
     z3_constraints = generate_constraints(data)
     constraints = z3_constraints[0]
     cost_constraints = z3_constraints[1]
-
-    for i in range(6,20):
-        models = add_cost_constraint(constraints,i,cost_constraints)
-        rule = print_rule(models)
-        if rule:
-            break
-        
+    column_cost = z3_constraints[2]
+    assert len(column_cost) == len(data[0])
+    for i in range(4,20):
+        # for some reason, we only add the column cost constraint when there are 2 inflections
+        if len(data[0]) <= 2: ccs = column_cost
+        else: ccs = [None]
+        for cc in ccs:
+            model = add_cost_constraint(constraints,i,cost_constraints,cc)
+            
+            rule = print_rule(model)
+            print(rule)
+            if rule:
+                #print("Successful synthesis!")
+                sys.exit(0)

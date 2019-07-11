@@ -205,6 +205,7 @@ def create_word(data,model):
 def print_rule(models):
     for model in models:
             words = create_word(data,model)
+            print("WORDS",words)
             rules = get_rules(words)   
             if(None in rules):
                 continue
@@ -219,6 +220,7 @@ if __name__ == "__main__":
     columna_cost = z3_constraints[2]
     columnb_cost = z3_constraints[3]
     for i in range(4,20):
+        print("I = ",i)
         modelB = add_cost_constraint(constraints,i,cost_constraints,columnb_cost)
         print("model",modelB)
         ruleB = print_rule(modelB)

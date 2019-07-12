@@ -12,6 +12,8 @@ def triples(it):
 def parse(words):
   data = []
   for underlying_form, surface_form in words:
+    if len(surface_form) == 0: continue
+    
     underlying_phones = parse_ipa.parse('#' + underlying_form + '#')
     surface_phones = parse_ipa.parse('#' + surface_form + '#')
 

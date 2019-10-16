@@ -37,6 +37,7 @@ setup(
   python_requires='~=3.6',
   install_requires=[
     'flask~=1.0',
+    'python-dotenv~=0.10',
   ],
 
   # TODO: Update this with actual entry points for cmdline tools

@@ -13,17 +13,22 @@
   {% if config['ENV'] == 'development' %}
     <p class="app-alert">Development
   {% endif %}
-  <h1>Phonosynth Demo</h1>
+  <h1>Phonosynth Demo (ERSP Version)</h1>
   <ul id="rules" class="callout">
     <li>Upload a file and infer a rule
   </ul>
   <div class="grid-x align-justify">
     <label for="csv-upload" class="button cell small-2">
       Upload file
-      <input id="csv-upload" type="file" class="show-for-sr">
+      <input id="csv-upload" type="file" class="show-for-sr" multiple>
+      <br>
+      <select id="csv-select"></select><br>
     </label>
     <button id="infer" type="button" class="button cell small-2">Infer rule</button>
   </div>
+
+  <textarea></textarea>
+
   <table id="word-stems" class="row">
     <thead>
       <tr>
@@ -40,3 +45,60 @@
     $(document).foundation();
   </script>
   <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+  <script type="text/javascript">
+
+
+    const [input, select, textarea, reader] = [
+    document.querySelector("input[type=file]")
+    , document.querySelector("select")
+    , document.querySelector("textarea")
+    , new FileReader
+    ];
+    let [files, data, fn] = [
+      [],
+      [], (file, reader) => new Promise((resolve, reject) => {
+        reader.onload = () => {
+          reader.onload = reader.onerror = null;
+          resolve(reader.result);
+        }
+        reader.onerror = reject;
+        reader.readAsText(file);
+      })
+    ];
+    input.onchange = async() => {
+      select.innerHTML = "";
+      files.length = data.length = 0;
+      for (const file of input.files) {
+        const {
+          name
+        } = file;
+        const option = new Option(name, files.length);
+        files.push(file);
+        select.appendChild(option);
+        let result = await fn(file, reader);
+        data.push(result);
+      }
+    }
+
+    select.onchange = () => {
+      console.log("textarea.value");
+      console.log(select.value);
+
+      console.log("Files");
+      console.log(files);
+
+      let file = files[select.value];     
+
+      console.log(files[select.value]);
+
+      let reader = new FileReader();
+      reader.onload = populateWordStems;
+      reader.readAsText(file);
+
+      textarea.value = data[select.value];
+    }
+
+    
+
+ </script>

@@ -26,7 +26,7 @@ $ make install
 ### Clone the repo and install Python dependencies
 
 ```shellsession
-$ git clone https://github.com/shraddhabarke/Phonosynthesis.git
+$ git clone https://github.com/CatoThe1stElder/Phonosynthesis.git
 $ cd Phonosynthesis
 $ pip install -e .
 ```

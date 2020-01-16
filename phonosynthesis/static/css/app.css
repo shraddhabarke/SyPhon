@@ -21,3 +21,34 @@
 body {
     padding-top: 2.4rem;
 }
+
+
+/* ====== ESRP: Styling ====== */
+#csv-upload-github {
+  width: 50%;
+}
+
+
+.loading-screen.backdrop {
+    background: red;
+    opacity: 0.5;
+    height: 100vh;
+    width: 100vw;
+    position: absolute;
+    z-index: 2;
+    flex: auto;
+    top: 0px;
+    left: 0px;
+    display: none;
+}
+.loading-screen.text {
+    color: black;
+    position: relative;
+    text-align: center;
+    vertical-align: middle;
+    font-size: 33px;
+    line-height: 100vh;
+    min-width: 100vw;
+    opacity: 1;
+    z-index: 3;
+}

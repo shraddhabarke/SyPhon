@@ -140,7 +140,7 @@ def infer_condition(triples_changed):
   opt.add(likelihood == log_num_models * LIKELIHOOD_WEIGHT * n_pos)
 
   objective = z3.Int('objective')
-  opt.add(objective == simplicity + likelihood)
+  opt.add(objective == simplicity)
   opt.minimize(objective)
 
   alphas = {}
@@ -226,7 +226,6 @@ def infer_condition(triples_changed):
           print(f'{str(name)}')
       print('\033[0;0m') # Reset text color and add a newline
       return None
-      #return None
   print('')
 
 LOG_NUM_MODELS = 0

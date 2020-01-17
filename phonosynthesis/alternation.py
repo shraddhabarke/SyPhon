@@ -22,12 +22,9 @@ with open(fname) as rf:
     reader = csv.reader(rf)
     for row in reader:
         if row[0] != "U":
-            print(row)
             data.append(''.join(row))
         elif row[0] == "U":
-            print(row)
             alt_forms.append((row[1],row[2]))
-            print(alt_forms)
 
 def generate_alternating_form(data,source,fst,snd):
     possible_config = []
@@ -42,9 +39,7 @@ def generate_alternating_form(data,source,fst,snd):
     return possible_config
 
 configA = generate_alternating_form(data,alt_forms,0,1)
-print(configA)
 configB = generate_alternating_form(data,alt_forms,1,0)
-print(configB)
 wordsA = zip(configA,data)
 wordsB = zip(configB,data)
 
@@ -59,7 +54,7 @@ def num_rules(rules):
 
 def num_features(rule):
     num_condition = 0
-    num_change = len(rule[0].keys())
+    num_change = len(rule[0].simplified_change.keys())
     for dictionary in rule[1]:
         count = len(dictionary.keys()) 
         num_condition += count
@@ -67,13 +62,16 @@ def num_features(rule):
     return(total_features)
 
 def select_rule(r1,r2):
-    if r1[0] == None:
+    if not r1:
         return r2
-    elif r2[0] == None:
+    if None in r1:
+        return r2
+    elif not r2:
+        return r1
+    if None in r2:
         return r1
     rA = num_rules(r1)
     rB = num_rules(r2)
-    print(rA,rB)
     if rA > rB:
         return r2
     elif rA < rB:
@@ -83,6 +81,8 @@ def select_rule(r1,r2):
             return r2[0]
         elif num_features(r1[0]) < num_features(r2[0]):
             return r1[0]
+        else:
+            return r2[0]
     else:
         fA = 0
         fB = 0
@@ -99,8 +99,7 @@ def select_rule(r1,r2):
 if __name__ == "__main__":
     rules1 = get_rules(wordsA)
     rules2 = get_rules(wordsB)
-    print(select_rule(rules1,rules2))
- 
-
+    rule = select_rule(rules1,rules2)
+    print(rule)
 
 

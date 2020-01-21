@@ -22,9 +22,9 @@ def group_phones(symbols):
 
 # Convert a list of IPA symbols representing a single phone to a dictionary of
 # features and their values.
-def phone_to_features(phone):
-  features = Phone(phone)
-  for symbol in phone:
+def phone_to_features(phones):
+  features = Phone(phones)
+  for symbol in phones:
     features.update(ipa_data.get_features(symbol))
   return features
 

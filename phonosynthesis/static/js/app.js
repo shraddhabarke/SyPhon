@@ -54,13 +54,12 @@ function renderRules(rules) {
   });
 }
 
-// $('#csv-upload').change(function () {
-//   let file = this.files[0];     
-
-//   let reader = new FileReader();
-//   reader.onload = populateWordStems;
-//   reader.readAsText(file);
-// });
+$('#csv-upload').change(function () {
+  let file = this.files[0];
+  let reader = new FileReader();
+  reader.onload = populateWordStems;
+  reader.readAsText(file);
+});
 
 $('#infer').click(() => {
   let wordStems = [];
@@ -87,6 +86,3 @@ $('#infer').click(() => {
       console.log(error);
     });
 })
-
-
-

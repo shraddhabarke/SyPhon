@@ -118,17 +118,17 @@ def write_csv():
 
 if __name__ == '__main__':
     ufbenchmarks = UF_BENCHMARKS
-    #for b in ufbenchmarks:
-    #    b.time = run_ufbenchmark(b.name,'matrix.py')
-    #    b.rule = open('SYPHON_LOG', "r").readlines()[-1]
-    #altbenchmarks = ALT_BENCHMARKS
-    #for b in altbenchmarks:
-    #    b.time = run_altbenchmark(b.name,'alternation.py')
-    #    b.rule = open('SYPHON_LOG', "r").readlines()[-1]
-    #supbenchs = SUP_BENCHMARKS
-    #for b in supbenchs:
-    #    b.time = run_supbench(b.name,'supervised.py')
-    #    b.rule = open('SYPHON_LOG', "r").readlines()[-1]
+    for b in ufbenchmarks:
+        b.time = run_ufbenchmark(b.name,'matrix.py')
+        b.rule = open('SYPHON_LOG', "r").readlines()[-1]
+    altbenchmarks = ALT_BENCHMARKS
+    for b in altbenchmarks:
+        b.time = run_altbenchmark(b.name,'alternation.py')
+        b.rule = open('SYPHON_LOG', "r").readlines()[-1]
+    supbenchs = SUP_BENCHMARKS
+    for b in supbenchs:
+        b.time = run_supbench(b.name,'supervised.py')
+        b.rule = open('SYPHON_LOG', "r").readlines()[-1]
     uf4benchs = UF4_BENCHMARKS
     for b in uf4benchs:
         b.time = run_ufbenchmark(b.name,'matrix.py')

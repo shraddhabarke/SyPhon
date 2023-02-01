@@ -62,7 +62,34 @@ For alpha notation, if the left and the right values for any feature are the sam
   
 ``` Not(alpha left right advanced tongue root), Not(alpha left right high), Not(alpha left right front), Not(alpha left right continuant), Not(alpha left right delayed release), Not(alpha left right word boundary), Not(alpha left right strident), Not(alpha left right sonorant), Not(alpha left right nasal), Not(alpha left right round), Not(alpha left right back), Not(alpha left right low))```
   
+The constraints for simplicity and likelihood are encoded as - <br>
+
+```opt.add(simplicity == simplicity_score * SIMPLICITY_WEIGHT)``` <br>
+```opt.add(likelihood == log_num_models * LIKELIHOOD_WEIGHT * n_pos)``` <br>
+  
+where ```n_pos``` is the number of triples that changed.
+
 ## Simplicity Constraints
+
+```FEATURE_PENALTY = 1000; FEATURE_SIMPLICITY_WEIGHT = 5```
+
+Simplicity cost for alpha variable - ```weight = 2 * (FEATURE_PENALTY + FEATURE_SIMPLICITY_WEIGHT * FEATURE_SIMPLICITY[feature])``` <br>
+
+example constraint - ```simplicity cost alpha left right continuant == If(alpha left right continuant, 3090, 0)``` <br>
+where 3090 is the weight for the feature ```continuant```
+
+Simplicity cost for features - ```weight = POSITION_WEIGHTS[position] * FEATURE_PENALTY + FEATURE_SIMPLICITY_WEIGHT * ipa_data.FEATURE_SIMPLICITY[feature]```
+
+where ```POSITION_WEIGHTS = {'left': 2, 'center': 1, 'right': 2}```
+
+```Implies(continuant left +, left nonempty)```
+```simplicity cost continuant left + == If(continuant left +, 2545, 0)```
+
+```If(left nonempty, 50000, 0)```
+```If(right nonempty, 50000, 0)```
+
+#### Feature simplicity calculation per feature
+
 
 ## Likelihood Constraints
 

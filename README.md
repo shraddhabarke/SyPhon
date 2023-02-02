@@ -75,21 +75,35 @@ where ```n_pos``` is the number of triples that changed.
 
 Simplicity cost for alpha variable - ```weight = 2 * (FEATURE_PENALTY + FEATURE_SIMPLICITY_WEIGHT * FEATURE_SIMPLICITY[feature])``` <br>
 
-example constraint - ```simplicity cost alpha left right continuant == If(alpha left right continuant, 3090, 0)``` <br>
+Example constraint - ```simplicity cost alpha left right continuant == If(alpha left right continuant, 3090, 0)``` <br>
 where 3090 is the weight for the feature ```continuant```
 
-Simplicity cost for features - ```weight = POSITION_WEIGHTS[position] * FEATURE_PENALTY + FEATURE_SIMPLICITY_WEIGHT * ipa_data.FEATURE_SIMPLICITY[feature]```
+Simplicity cost for features in general - ```weight = POSITION_WEIGHTS[position] * FEATURE_PENALTY + FEATURE_SIMPLICITY_WEIGHT * ipa_data.FEATURE_SIMPLICITY[feature]```
 
 where ```POSITION_WEIGHTS = {'left': 2, 'center': 1, 'right': 2}```
 
-```Implies(continuant left +, left nonempty)```
 ```simplicity cost continuant left + == If(continuant left +, 2545, 0)```
 
-```If(left nonempty, 50000, 0)```
+#### Position non-empty constraints
+```z3.Implies(continuant left +, left nonempty)```
+
+```If(left nonempty, 50000, 0)``` <br>
 ```If(right nonempty, 50000, 0)```
 
 #### Feature simplicity calculation per feature
 
+TODO
 
 ## Likelihood Constraints
 
+favors more specific conditions if there are sufficient positive examples to support them. need to compute the most likely model from all the different models returned.
+for each phone in each position, we calculate the number of models by encoding the features values of each phone at each position: 
+
+For example, for the phone ```p``` with the following feature values, 
+
+```{'voice': '-', 'front': '0', 'nasal': '-', 'back': '0', 'round': '0', 'consonant': '+', 'continuant': '-', 'coronal': '-', 'advanced tongue root': '0', 'distributed': '0', 'delayed release': '-', 'constricted glottis': '-', 'approximant': '-', 'labial': '+', 'high': '0', 'strident': '0', 'anterior': '0', 'dorsal': '-', 'spread glottis': '-', 'sonorant': '-', 'lateral': '-', 'syllabic': '-', 'low': '0', 'long': '-', 'primary stress': '-', 'secondary stress': '-', 'stress': '-', 'word boundary': '0', 'deleted': '-'}```
+
+if the constraint below is satisfied, the model counter is incremented.
+```in model ['LATIN SMALL LETTER P'] left == If(Or(syllabic left +, Or(strident left +, strident left -, alpha left right strident), sonorant left +, primary stress left +, long left +, consonant left -, continuant left +, labial left -, Or(advanced tongue root left +, advanced tongue root left -, alpha left right advanced tongue root), delayed release left +, Or(round left +, round left -, alpha left right round), Or(high left +, high left -, alpha left right high), stress left +, dorsal left +, approximant left +, secondary stress left +, spread glottis left +, Or(front left +, front left -, alpha left right front), coronal left +, Or(low left +, low left -, alpha left right low), Or(back left +, back left -, alpha left right back), Or(anterior left +, anterior left -, alpha left right anterior), voice left +, deleted left +, nasal left +, Or(distributed left +, distributed left -, alpha left right distributed), lateral left +, Or(word boundary left +, word boundary left -, alpha left right word boundary), constricted glottis left +), 0, 1)```
+
+TODO
